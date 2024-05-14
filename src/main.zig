@@ -29,8 +29,8 @@ pub fn main() !void {
     }
 
     const result = try file_bytes.toOwnedSlice();
-    _ = lexer.lex(result, alloc) catch |err| {
-        std.debug.print("Could not lex, {s}", .{err});
+    _ = lexer.lex(result, alloc) catch {
+        std.debug.print("Could not lex\n", .{});
         return;
     };
 
