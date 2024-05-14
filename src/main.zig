@@ -4,20 +4,39 @@ const parser = @import("parser.zig");
 const logger = @import("logger.zig");
 
 pub fn main() !void {
+    const alloc: std.mem.Allocator = std.heap.page_allocator;
     const name = try get_file_name() orelse "";
 
-    const lines = get_file(name) catch {
+    const lines = get_file(name, alloc) catch {
         try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
         return;
     };
 
     if (lines) |_| {} else {
         std.debug.print("File not found\n", .{});
+        return;
     }
 
-    // read in file
-    // lex
-    // parse
+    defer lines.?.deinit();
+
+    // convert Arraylist([]const u8) to Arraylist(u8)
+
+    var file_bytes = std.ArrayList(u8).init(alloc);
+    defer file_bytes.deinit();
+
+    for (lines.?.items) |item| {
+        try file_bytes.appendSlice(item);
+    }
+
+    const result = try file_bytes.toOwnedSlice();
+    _ = lexer.lex(result, alloc) catch |err| {
+        std.debug.print("Could not lex, {s}", .{err});
+        return;
+    };
+
+    // [x] read in file
+    // [ ] lex
+    // [ ] parse
 }
 
 fn get_file_name() !?[]const u8 {
@@ -33,8 +52,7 @@ fn get_file_name() !?[]const u8 {
     return null;
 }
 
-fn get_file(name: []const u8) !?std.ArrayList([]const u8) {
-    const alloc: std.mem.Allocator = std.heap.page_allocator;
+fn get_file(name: []const u8, alloc: std.mem.Allocator) !?std.ArrayList([]const u8) {
     const max_line: usize = 4096;
 
     var file = std.fs.cwd().openFile(name, .{}) catch {
