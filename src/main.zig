@@ -19,8 +19,6 @@ pub fn main() !void {
 
     defer lines.?.deinit();
 
-    // convert Arraylist([]const u8) to Arraylist(u8)
-
     var file_bytes = std.ArrayList(u8).init(alloc);
     defer file_bytes.deinit();
 
@@ -29,13 +27,14 @@ pub fn main() !void {
     }
 
     const result = try file_bytes.toOwnedSlice();
+
     _ = lexer.lex(result, alloc) catch {
         std.debug.print("Could not lex\n", .{});
         return;
     };
 
     // [x] read in file
-    // [ ] lex
+    // [x] lex
     // [ ] parse
 }
 
