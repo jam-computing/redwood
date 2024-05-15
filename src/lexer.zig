@@ -5,7 +5,6 @@ const Token = @import("parser.zig").Token;
 
 pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
     var tokens = std.ArrayList(Token).init(alloc);
-    defer tokens.deinit();
 
     // TODO: Change this loop so that i can read words
     var i: usize = 0;
@@ -38,6 +37,8 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
             ')' => Token.rbracket,
             '{' => Token.lcurly,
             '}' => Token.rcurly,
+            '[' => Token.lsquare,
+            ']' => Token.rsquare,
             '_' => Token.underscore,
             else => blk: {
                 if (!std.ascii.isAlphabetic(string[i])) {
@@ -51,19 +52,15 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
                         break;
                     }
                 }
-                break :blk Token{ .keyword = try iden.toOwnedSlice() };
+                break :blk Token{ .identifier = try iden.toOwnedSlice() };
             },
         };
         _ = try tokens.append(t);
     }
 
-    const sli = tokens.toOwnedSlice() catch {
-        return LexError.InvalidSyntax;
-    };
+    // print_tokens(tokens.items);
 
-    print_tokens(sli);
-
-    return sli;
+    return tokens.items;
 }
 
 fn print_tokens(tokens: []Token) void {
@@ -96,8 +93,10 @@ fn print_tokens(tokens: []Token) void {
             .rbracket => "Right Bracket",
             .lcurly => "Left Curly",
             .rcurly => "Right Curly",
+            .lsquare => "Left Square",
+            .rsquare => "Right Square",
             .underscore => "Underscore",
-            .keyword => |keyword| keyword,
+            .identifier => |keyword| keyword,
             else => "Unidentied Token",
         }});
     }

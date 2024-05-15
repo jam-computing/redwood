@@ -12,3 +12,4 @@ TODO:
 - [ ] Spit output to a file ( no need to reinvent the wheel - use json )
 
 
+Lex one line at time - each line is a `component` of the animation

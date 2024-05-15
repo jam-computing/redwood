@@ -10,32 +10,36 @@ pub fn main() !void {
     const lines = get_file(name, alloc) catch {
         try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
         return;
-    };
+    } orelse unreachable;
 
-    if (lines) |_| {} else {
-        std.debug.print("File not found\n", .{});
-        return;
+    defer lines.deinit();
+
+    var i: usize = 0;
+    for (lines.items) |line| {
+        std.debug.print("Line: {}\n", .{i});
+
+        const tokens = lexer.lex(line, alloc) catch {
+            std.debug.print("Could not lex\n", .{});
+            return;
+        };
+
+        std.debug.print("Parsing line\n", .{});
+        const output = parser.parse(tokens) catch |err| {
+            switch (err) {
+                parser.ParseError.InvalidTokenOrder => std.log.err("Unexpected Token Found, panicing", .{}),
+                parser.ParseError.InvalidIdentifierFound => std.log.err("Invalid Identifier, panicing", .{}),
+            }
+            return;
+        };
+
+        if (output) |o| {
+            std.debug.print("{}\n", .{o.object});
+        }
+
+        // Send to server if repl?
+        // Store in file in not?
+        i += 1;
     }
-
-    defer lines.?.deinit();
-
-    var file_bytes = std.ArrayList(u8).init(alloc);
-    defer file_bytes.deinit();
-
-    for (lines.?.items) |item| {
-        try file_bytes.appendSlice(item);
-    }
-
-    const result = try file_bytes.toOwnedSlice();
-
-    _ = lexer.lex(result, alloc) catch {
-        std.debug.print("Could not lex\n", .{});
-        return;
-    };
-
-    // [x] read in file
-    // [x] lex
-    // [ ] parse
 }
 
 fn get_file_name() !?[]const u8 {
