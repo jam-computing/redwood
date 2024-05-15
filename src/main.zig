@@ -27,13 +27,14 @@ pub fn main() !void {
         const output = parser.parse(tokens) catch |err| {
             switch (err) {
                 parser.ParseError.InvalidTokenOrder => std.log.err("Unexpected Token Found, panicing", .{}),
-                parser.ParseError.InvalidIdentifierFound => std.log.err("Invalid Identifier, panicing", .{}),
+                parser.ParseError.InvalidObjIdentifier => std.log.err("Invalid Object Identifier, panicing", .{}),
+                parser.ParseError.InvalidColourIdentifier => std.log.err("Invalid Colour Identifier, panicing", .{}),
             }
             return;
         };
 
         if (output) |o| {
-            std.debug.print("{}\n", .{o.object});
+            std.debug.print("obj: {}\ncol: {?s}\n", .{ o.object, o.colour });
         }
 
         // Send to server if repl?

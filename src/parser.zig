@@ -3,9 +3,9 @@ pub const Keyword = enum { plane };
 
 const std = @import("std");
 
-pub const ParseError = error{ InvalidTokenOrder, InvalidIdentifierFound };
+pub const ParseError = error{ InvalidTokenOrder, InvalidObjIdentifier, InvalidColourIdentifier };
 
-const fn_data = struct { object: fn_object };
+const fn_data = struct { object: fn_object, colour: ?[]const u8 };
 const fn_object = enum {
     none,
     plane,
@@ -22,14 +22,14 @@ const fn_object = enum {
 
 pub fn parse(tokens: []const Token) ParseError!?fn_data {
     var i: usize = 0;
-    var data: fn_data = fn_data{ .object = .none };
-    for (tokens) |token| {
+    var data: fn_data = fn_data{ .object = .none, .colour = null };
+    while (i < tokens.len) {
         // std.debug.print("Token: {}\n", .{token});
-        switch (token) {
+        switch (tokens[i]) {
             .lsquare => {
                 i += 1;
                 if (tokens[i] == .rsquare) {
-                    return ParseError.InvalidIdentifierFound;
+                    return ParseError.InvalidObjIdentifier;
                 }
                 std.debug.print("Token: {}\n", .{tokens[i]});
                 if (tokens[i] != .identifier) {
@@ -39,10 +39,20 @@ pub fn parse(tokens: []const Token) ParseError!?fn_data {
                 if (obj) |o| {
                     data.object = o;
                 } else {
-                    return ParseError.InvalidIdentifierFound;
+                    return ParseError.InvalidObjIdentifier;
                 }
             },
-            .rsquare => {},
+            .lcurly => {
+                i += 1;
+                if (tokens[i] == .rcurly) {
+                    return ParseError.InvalidColourIdentifier;
+                }
+                std.debug.print("Token: {}\n", .{tokens[i]});
+                if (tokens[i] != .identifier) {
+                    return ParseError.InvalidTokenOrder;
+                }
+                data.colour = tokens[i].identifier;
+            },
             else => {},
         }
         i += 1;
