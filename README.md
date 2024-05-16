@@ -11,5 +11,23 @@ TODO:
 - [ ] Parser
 - [ ] Spit output to a file ( no need to reinvent the wheel - use json )
 
+- [ ] Without a led file, spit out a list of grids
+- [ ] With a led file, convert list of grids to led colours
+
 
 Lex one line at time - each line is a `component` of the animation
+
+
+### Imporoting / Binding
+
+- When importing, replace each occurance of the imported identifier with a unique identiifer
+
+
+example
+```
+import tick as t
+
+@node ini(t) = 0
+```
+
+

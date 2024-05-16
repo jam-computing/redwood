@@ -24,11 +24,14 @@ pub fn main() !void {
         };
 
         std.debug.print("Parsing line\n", .{});
-        const output = parser.parse(tokens) catch |err| {
+        const output = parser.parse(tokens, alloc) catch |err| {
             switch (err) {
                 parser.ParseError.InvalidTokenOrder => std.log.err("Unexpected Token Found, panicing", .{}),
                 parser.ParseError.InvalidObjIdentifier => std.log.err("Invalid Object Identifier, panicing", .{}),
                 parser.ParseError.InvalidColourIdentifier => std.log.err("Invalid Colour Identifier, panicing", .{}),
+                parser.ParseError.InvalidImport => std.log.err("Import of value that does not exist, panicing", .{}),
+                parser.ParseError.InvalidImportLen => std.log.err("Import alias too long, should only be one char", .{}),
+                else => std.log.err("Error not handled. Panicing", .{}),
             }
             return;
         };
@@ -37,8 +40,6 @@ pub fn main() !void {
             std.debug.print("obj: {}\ncol: {?s}\n", .{ o.object, o.colour });
         }
 
-        // Send to server if repl?
-        // Store in file in not?
         i += 1;
     }
 }

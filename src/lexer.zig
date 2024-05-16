@@ -2,6 +2,7 @@ pub const LexError = error{InvalidSyntax};
 
 const std = @import("std");
 const Token = @import("parser.zig").Token;
+const Keyword = @import("parser.zig").Keyword;
 
 pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
     var tokens = std.ArrayList(Token).init(alloc);
@@ -10,7 +11,7 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
     var i: usize = 0;
     while (i < string.len) : (i += 1) {
         const t = switch (string[i]) {
-            ' ' => Token.space,
+            ' ' => continue,
             '1' => Token.one,
             '2' => Token.two,
             '3' => Token.three,
@@ -40,6 +41,7 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
             '[' => Token.lsquare,
             ']' => Token.rsquare,
             '_' => Token.underscore,
+            '@' => Token.at,
             else => blk: {
                 if (!std.ascii.isAlphabetic(string[i])) {
                     break :blk Token.none;
@@ -52,14 +54,18 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
                         break;
                     }
                 }
-                break :blk Token{ .identifier = try iden.toOwnedSlice() };
+
+                const kword = Keyword.str_to_obj(iden.items) orelse {
+                    break :blk Token{ .identifier = try iden.toOwnedSlice() };
+                };
+
+                break :blk Token{ .keyword = kword };
             },
         };
         _ = try tokens.append(t);
     }
 
     // print_tokens(tokens.items);
-
     return tokens.items;
 }
 
@@ -96,6 +102,7 @@ fn print_tokens(tokens: []Token) void {
             .lsquare => "Left Square",
             .rsquare => "Right Square",
             .underscore => "Underscore",
+            .at => "At",
             .identifier => |keyword| keyword,
             else => "Unidentied Token",
         }});
