@@ -22,12 +22,13 @@ Lex one line at time - each line is a `component` of the animation
 
 - When importing, replace each occurance of the imported identifier with a unique identiifer
 
-
 example
 ```
 import tick as t
 
 @node ini(t) = 0
+// Would be replaced with:
+@node /t\
 ```
 
 

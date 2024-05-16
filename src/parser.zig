@@ -23,29 +23,33 @@ pub const Keyword = enum {
 const std = @import("std");
 const redlib = @import("stdlib.zig");
 
-pub const ParseError = error{ InvalidTokenOrder, InvalidObjIdentifier, InvalidColourIdentifier, InvalidImport, ExistingIdentifer, InvalidImportLen };
+pub const ParseError = error{ AllocatorError, InvalidTokenOrder, InvalidObjIdentifier, InvalidColourIdentifier, InvalidImport, ExistingIdentifer, InvalidImportLen };
 
-const fn_data = struct { object: fn_object, colour: ?[]const u8 };
-const fn_object = enum {
+const node = struct { object: node_object, colour: ?[]const u8 };
+const node_object = enum {
     none,
     plane,
-    pub fn str_to_obj(str: []const u8) ?fn_object {
+    pub fn str_to_obj(str: []const u8) ?node_object {
         // There HAS to be a better way to do this
         if (std.mem.eql(u8, str, "plane")) {
-            return fn_object.plane;
+            return node_object.plane;
         }
         if (std.mem.eql(u8, str, "none")) {
-            return fn_object.plane;
+            return node_object.plane;
         }
         return null;
     }
 };
 
-pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?fn_data {
+pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node {
     var import_map = std.AutoHashMap(u8, redlib.imports).init(alloc);
     defer import_map.deinit();
+
+    var node_map = std.StringHashMap(node).init(alloc);
+    defer node_map.deinit();
+
     var i: usize = 0;
-    var data: fn_data = fn_data{ .object = .none, .colour = null };
+
     while (i < tokens.len) {
         // std.debug.print("Token: {}\n", .{token});
         switch (tokens[i]) {
@@ -53,9 +57,7 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?fn_dat
                 // swithc on keyword
                 switch (keyword) {
                     .import => {
-                        // Check if
                         i += 1;
-                        std.debug.print("Import val = {s}\n", .{tokens[i].identifier});
                         const t = tokens[i];
                         const imp = redlib.imports.is_keyword(t.identifier) orelse {
                             std.debug.print("Invalid import\n", .{});
@@ -78,35 +80,24 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?fn_dat
                         };
                         std.debug.print("Imported: {} as {c}\n", .{ imp, identifier[0] });
                     },
+                    .define => {
+                        i += 1;
+                        // keyword(define) identifier(node_name) identifier(node_object_name)
+                        const node_name = tokens[i].identifier;
+                        i += 1;
+                        const node_object_name = tokens[i].identifier;
+                        const node_obj = node_object.str_to_obj(node_object_name);
+
+                        if (node_obj) |obj| {
+                            node_map.put(node_name, node{ .object = obj, .colour = null }) catch {
+                                return ParseError.ExistingIdentifer;
+                            };
+                        }
+
+                        std.debug.print("Node {s} created as {s}\n", .{ node_name, node_object_name });
+                    },
                     else => {},
                 }
-            },
-            .lsquare => {
-                i += 1;
-                if (tokens[i] == .rsquare) {
-                    return ParseError.InvalidObjIdentifier;
-                }
-                std.debug.print("Token: {}\n", .{tokens[i]});
-                if (tokens[i] != .identifier) {
-                    return ParseError.InvalidTokenOrder;
-                }
-                const obj = fn_object.str_to_obj(tokens[i].identifier);
-                if (obj) |o| {
-                    data.object = o;
-                } else {
-                    return ParseError.InvalidObjIdentifier;
-                }
-            },
-            .lcurly => {
-                i += 1;
-                if (tokens[i] == .rcurly) {
-                    return ParseError.InvalidColourIdentifier;
-                }
-                std.debug.print("Token: {}\n", .{tokens[i]});
-                if (tokens[i] != .identifier) {
-                    return ParseError.InvalidTokenOrder;
-                }
-                data.colour = tokens[i].identifier;
             },
             .identifier => |_| {},
             else => {},
@@ -114,5 +105,28 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?fn_dat
         i += 1;
     }
 
-    return data;
+    var nodes = std.ArrayList(node).init(alloc);
+    defer nodes.deinit();
+
+    var values = node_map.valueIterator();
+    const count = node_map.count();
+
+    std.debug.print("Node Count: {}\n", .{count});
+
+    var val_count: usize = 0;
+
+    while (values.next()) |item| {
+        if (val_count == count) {
+            break;
+        }
+        nodes.append(item.*) catch {
+            std.debug.print("Error appending to nodes\n", .{});
+            continue;
+        };
+        val_count += 1;
+    }
+
+    return nodes.toOwnedSlice() catch {
+        return ParseError.AllocatorError;
+    };
 }
