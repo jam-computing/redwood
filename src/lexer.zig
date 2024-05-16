@@ -1,8 +1,8 @@
 pub const LexError = error{InvalidSyntax};
 
 const std = @import("std");
-const Token = @import("parser.zig").Token;
-const Keyword = @import("parser.zig").Keyword;
+const Token = @import("token.zig").Token;
+const Keyword = @import("token.zig").Keyword;
 
 pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
     var tokens = std.ArrayList(Token).init(alloc);
@@ -32,6 +32,7 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
             '/' => Token.fslash,
             '\\' => Token.bslash,
             '^' => Token.carot,
+            ',' => Token.comma,
             '%' => Token.percent,
             '!' => Token.bang,
             '(' => Token.lbracket,
@@ -93,6 +94,7 @@ fn print_tokens(tokens: []Token) void {
             .bslash => "Backslash",
             .andpercand => "Andpercand",
             .carot => "Carot",
+            .comma => "Comma",
             .percent => "Percentage",
             .bang => "Bang",
             .lbracket => "Left Bracket",

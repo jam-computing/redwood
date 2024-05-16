@@ -1,44 +1,23 @@
-pub const Token = union(enum) { one, two, three, four, five, six, seven, eight, nine, equals, space, newline, colon, semicolon, minus, plus, star, fslash, bslash, carot, percent, bang, andpercand, lbracket, rbracket, lcurly, rcurly, lsquare, rsquare, underscore, at, keyword: Keyword, identifier: []const u8, none };
-pub const Keyword = enum {
-    import,
-    define,
-    as,
-    pub fn str_to_obj(str: []const u8) ?Keyword {
-        // There HAS to be a better way to do this
-        if (std.mem.eql(u8, str, "import")) {
-            return Keyword.import;
-        }
-        if (std.mem.eql(u8, str, "define")) {
-            return Keyword.define;
-        }
-        if (std.mem.eql(u8, str, "as")) {
-            return Keyword.as;
-        }
-        return null;
-    }
-};
-
-// Hashmap of imported things?
-
 const std = @import("std");
+
+const node = @import("node.zig").node;
+const node_object = @import("node.zig").node_object;
+const node_fn = @import("node.zig").node_fn;
+const Token = @import("token.zig").Token;
 const redlib = @import("stdlib.zig");
 
-pub const ParseError = error{ AllocatorError, InvalidTokenOrder, InvalidObjIdentifier, InvalidColourIdentifier, InvalidImport, ExistingIdentifer, InvalidImportLen };
-
-const node = struct { object: node_object, colour: ?[]const u8 };
-const node_object = enum {
-    none,
-    plane,
-    pub fn str_to_obj(str: []const u8) ?node_object {
-        // There HAS to be a better way to do this
-        if (std.mem.eql(u8, str, "plane")) {
-            return node_object.plane;
-        }
-        if (std.mem.eql(u8, str, "none")) {
-            return node_object.plane;
-        }
-        return null;
-    }
+pub const ParseError = error{
+    InvalidNodeIdentifier,
+    AllocatorError,
+    InvalidTokenOrder,
+    InvalidObjIdentifier,
+    InvalidColourIdentifier,
+    InvalidImport,
+    ExistingIdentifer,
+    InvalidImportLen,
+    InvalidFunctionName,
+    InvalidParameterList,
+    FunctionCreationError,
 };
 
 pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node {
@@ -51,10 +30,8 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
     var i: usize = 0;
 
     while (i < tokens.len) {
-        // std.debug.print("Token: {}\n", .{token});
         switch (tokens[i]) {
             .keyword => |keyword| {
-                // swithc on keyword
                 switch (keyword) {
                     .import => {
                         i += 1;
@@ -63,7 +40,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
                             std.debug.print("Invalid import\n", .{});
                             return ParseError.InvalidImport;
                         };
-                        // Look for as
                         i += 1;
                         if (tokens[i].keyword != .as) {
                             return ParseError.InvalidTokenOrder;
@@ -85,11 +61,12 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
                         // keyword(define) identifier(node_name) identifier(node_object_name)
                         const node_name = tokens[i].identifier;
                         i += 1;
+
                         const node_object_name = tokens[i].identifier;
                         const node_obj = node_object.str_to_obj(node_object_name);
 
                         if (node_obj) |obj| {
-                            node_map.put(node_name, node{ .object = obj, .colour = null }) catch {
+                            node_map.put(node_name, node{ .name = node_name, .object = obj, .colour = null, .fns = std.StringHashMap(node_fn).init(alloc) }) catch {
                                 return ParseError.ExistingIdentifer;
                             };
                         }
@@ -98,6 +75,59 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
                     },
                     else => {},
                 }
+            },
+            .at => {
+                i += 1;
+                // token(@) identifier(node_obj_name) identifier(fn_name)
+                // token(lbracket) list(identifier) token(rbracket) token(equals)
+                // token(math_expr)
+
+                const node_name = tokens[i].identifier;
+                var n: ?node = null;
+
+                if (node_map.get(node_name)) |nmap_get| {
+                    n = nmap_get;
+                } else {
+                    return ParseError.InvalidNodeIdentifier;
+                }
+
+                i += 1;
+                const fn_name = tokens[i].identifier;
+                var _fn = node_fn{ .math = "" };
+                if (n.?.fns.get(fn_name)) |_| {
+                    return ParseError.InvalidFunctionName;
+                }
+
+                i += 2;
+
+                var parameters = std.ArrayList([]const u8).init(alloc);
+                defer parameters.deinit();
+                // Check if tokens[i] == Token.rbracket;
+                while (tokens[i] != Token.rbracket) : (i += 1) {
+                    if (tokens[i] == Token.identifier) {
+                        parameters.append(tokens[i].identifier) catch {
+                            continue;
+                        };
+                    } else if (tokens[i] == Token.comma) {
+                        continue;
+                    } else {
+                        return ParseError.InvalidParameterList;
+                    }
+                }
+
+                if (tokens[i] != Token.equals) {
+                    return ParseError.InvalidTokenOrder;
+                }
+
+                i += 1;
+
+                // Figure out how to get actual math later
+                // Change lexer so after equals it parses rest of line as math expr, until line ends with !
+
+                _fn.math = "";
+                n.?.fns.put(fn_name, _fn) catch {
+                    return ParseError.FunctionCreationError;
+                };
             },
             .identifier => |_| {},
             else => {},
