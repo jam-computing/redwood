@@ -3,12 +3,11 @@ Mathmatical / Scripting language to create animations to be displayed on a tree 
 
 TODO:
 
-- [ ] Design Language
+- [x] Design Language
 - [x] Read in from file
 - [ ] Some mathmatical lib cause no way am i being mathmatic
-- [ ] helper functions for parser and lexer
-- [ ] Lexer
-- [ ] Parser
+- [x] Lexer
+- [x] Parser
 - [ ] Spit output to a file ( no need to reinvent the wheel - use json )
 
 - [ ] Without a led file, spit out a list of grids
@@ -22,13 +21,14 @@ Lex one line at time - each line is a `component` of the animation
 
 - When importing, replace each occurance of the imported identifier with a unique identiifer
 
-example
+Code Example
 ```
 import tick as t
 
-@node ini(t) = 0
-// Would be replaced with:
-@node /t\
+define p plane
+
+@p f(t) = t, t, t
+
 ```
 
 
