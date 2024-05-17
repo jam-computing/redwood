@@ -23,4 +23,5 @@ pub const node_object = enum {
 
 pub const node_fn = struct {
     math: []const u8,
+    parameters: [][]const u8,
 };

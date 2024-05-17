@@ -18,6 +18,7 @@ pub const ParseError = error{
     InvalidFunctionName,
     InvalidParameterList,
     FunctionCreationError,
+    InvalidFunctionParameter,
 };
 
 pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node {
@@ -69,9 +70,9 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
                             node_map.put(node_name, node{ .name = node_name, .object = obj, .colour = null, .fns = std.StringHashMap(node_fn).init(alloc) }) catch {
                                 return ParseError.ExistingIdentifer;
                             };
+                        } else {
+                            return ParseError.InvalidNodeIdentifier;
                         }
-
-                        std.debug.print("Node {s} created as {s}\n", .{ node_name, node_object_name });
                     },
                     else => {},
                 }
@@ -93,8 +94,8 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
 
                 i += 1;
                 const fn_name = tokens[i].identifier;
-                var _fn = node_fn{ .math = "" };
                 if (n.?.fns.get(fn_name)) |_| {
+                    std.debug.print("Invalid function\n", .{});
                     return ParseError.InvalidFunctionName;
                 }
 
@@ -115,19 +116,32 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
                     }
                 }
 
+                i += 1;
                 if (tokens[i] != Token.equals) {
                     return ParseError.InvalidTokenOrder;
                 }
 
                 i += 1;
 
-                // Figure out how to get actual math later
-                // Change lexer so after equals it parses rest of line as math expr, until line ends with !
+                if (tokens[i] != Token.expr) {
+                    return ParseError.InvalidTokenOrder;
+                }
 
-                _fn.math = "";
+                const _fn = node_fn{ .math = tokens[i].expr, .parameters = parameters.toOwnedSlice() catch {
+                    return ParseError.InvalidFunctionParameter;
+                } };
                 n.?.fns.put(fn_name, _fn) catch {
                     return ParseError.FunctionCreationError;
                 };
+
+                if (!node_map.remove(node_name)) {
+                    return ParseError.InvalidNodeIdentifier;
+                }
+                node_map.put(node_name, n.?) catch {
+                    return ParseError.InvalidNodeIdentifier;
+                };
+
+                std.debug.print("Added fn, new count: {}\n", .{n.?.fns.count()});
             },
             .identifier => |_| {},
             else => {},
@@ -140,8 +154,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError!?[]node
 
     var values = node_map.valueIterator();
     const count = node_map.count();
-
-    std.debug.print("Node Count: {}\n", .{count});
 
     var val_count: usize = 0;
 

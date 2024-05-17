@@ -21,7 +21,6 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
             '7' => Token.seven,
             '8' => Token.eight,
             '9' => Token.nine,
-            '=' => Token.equals,
             '\n' => Token.newline,
             ':' => Token.colon,
             ';' => Token.semicolon,
@@ -43,6 +42,23 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
             ']' => Token.rsquare,
             '_' => Token.underscore,
             '@' => Token.at,
+            // Math expr should always be after equals
+            '=' => eql: {
+                i += 1;
+                var expr = std.ArrayList(u8).init(alloc);
+                defer expr.deinit();
+                while (string[i] != '\n') : (i += 1) {
+                    expr.append(string[i]) catch {
+                        continue;
+                    };
+                }
+                const math = expr.toOwnedSlice() catch {
+                    break :eql Token.equals;
+                };
+                _ = try tokens.append(Token.equals);
+                const trimmed = std.mem.trim(u8, math, &[_]u8{ ' ', '\t' });
+                break :eql Token{ .expr = trimmed };
+            },
             else => blk: {
                 if (!std.ascii.isAlphabetic(string[i])) {
                     break :blk Token.none;
@@ -67,6 +83,7 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
     }
 
     // print_tokens(tokens.items);
+
     return tokens.items;
 }
 
@@ -105,7 +122,13 @@ fn print_tokens(tokens: []Token) void {
             .rsquare => "Right Square",
             .underscore => "Underscore",
             .at => "At",
-            .identifier => |keyword| keyword,
+            .expr => |ex| ex,
+            .keyword => |keyword| switch (keyword) {
+                .import => "Import",
+                .as => "As",
+                .define => "Define",
+            },
+            .identifier => |identifier| identifier,
             else => "Unidentied Token",
         }});
     }

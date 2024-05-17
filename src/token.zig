@@ -45,6 +45,7 @@ pub const Token = union(enum) {
 
     keyword: Keyword,
     identifier: []const u8,
+    expr: []const u8,
 };
 
 pub const Keyword = enum {
