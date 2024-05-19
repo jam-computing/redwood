@@ -4,14 +4,17 @@ const parser = @import("parser.zig");
 const logger = @import("logger.zig");
 const Token = @import("token.zig").Token;
 
-pub fn main() !void {
+pub fn main() !u8 {
     const alloc: std.mem.Allocator = std.heap.page_allocator;
     const name = try get_file_name() orelse "";
 
     const file_lines = get_file(name, alloc) catch {
         try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
-        return;
-    } orelse unreachable;
+        return 1;
+    } orelse {
+        try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
+        return 1;
+    };
 
     var token_lines = std.ArrayList([]const Token).init(alloc);
     defer token_lines.deinit();
@@ -19,7 +22,7 @@ pub fn main() !void {
     for (file_lines) |line| {
         try token_lines.append(lexer.lex(line, alloc) catch {
             std.debug.print("Could not lex\n", .{});
-            return;
+            return 1;
         });
     }
 
@@ -32,20 +35,50 @@ pub fn main() !void {
         }
     }
 
-    const output = parser.parse(try tokens.toOwnedSlice(), alloc) catch |err| {
-        switch (err) {
-            parser.ParseError.InvalidTokenOrder => std.log.err("Unexpected Token Found, panicing", .{}),
-            parser.ParseError.InvalidObjIdentifier => std.log.err("Invalid Object Identifier, panicing", .{}),
-            parser.ParseError.InvalidColourIdentifier => std.log.err("Invalid Colour Identifier, panicing", .{}),
-            parser.ParseError.InvalidImport => std.log.err("Import of value that does not exist, panicing", .{}),
-            parser.ParseError.InvalidImportLen => std.log.err("Import alias too long, should only be one char", .{}),
-            parser.ParseError.InvalidNodeIdentifier => std.log.err("Node name is invalid or already taken", .{}),
-            else => std.log.err("Error not handled. Panicing", .{}),
-        }
-        return;
-    };
+    const output = parser.parse(try tokens.toOwnedSlice(), alloc);
 
-    if (output) |nodes| {
+    if (output.kind) |kind| {
+        const token_num = output.token_num;
+        var token_counter: usize = token_num;
+        var i: usize = 0;
+
+        while (i < token_lines.items.len) : (i += 1) {
+            const line = token_lines.items[i];
+
+            if (line.len <= token_counter) {
+                token_counter -= line.len;
+                continue;
+            }
+
+            var underline = std.ArrayList(u8).init(alloc);
+            defer underline.deinit();
+            var word_num: usize = 0;
+            var k: usize = 0;
+            while (k < file_lines[i].len) : (k += 1) {
+                if (file_lines[i][k] == ' ') {
+                    word_num += 1;
+                }
+
+                if (word_num == token_counter and file_lines[i][k] != ' ') {
+                    underline.append('^') catch {
+                        continue;
+                    };
+                } else {
+                    underline.append('~') catch {
+                        continue;
+                    };
+                }
+            }
+            _ = underline.pop();
+
+            // This is the line number
+            std.debug.print("\x1B[31m{}\x1B[0m, on line {}\n", .{ kind, i + 1 });
+            std.debug.print("{s}\x1B[32m{s}\x1B[0m\n", .{ file_lines[i], underline.items });
+            break;
+        }
+    }
+
+    if (output.nodes) |nodes| {
         for (nodes) |node| {
             std.debug.print("Node Object: {}, Node Colour: {?s}, Node Fn Count: {}\n", .{ node.object, node.colour, node.fns.count() });
             var iter = node.fns.iterator();
@@ -53,9 +86,8 @@ pub fn main() !void {
                 std.debug.print("{}, \n", .{f});
             }
         }
-    } else {
-        std.debug.print("No output\n", .{});
     }
+    return 0;
 }
 
 fn get_file_name() !?[]const u8 {

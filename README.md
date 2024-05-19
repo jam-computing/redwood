@@ -28,7 +28,8 @@ import tick as t
 define p plane
 
 @p f(t) = t, t, t
-
 ```
 
 
+
+better compiler messages plaesae :pray:
