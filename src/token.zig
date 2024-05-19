@@ -46,6 +46,51 @@ pub const Token = union(enum) {
     keyword: Keyword,
     identifier: []const u8,
     expr: []const u8,
+
+    pub fn token_to_str(token: Token) []const u8 {
+        return switch (token) {
+            .space => "Space",
+            .one => "One",
+            .two => "Two",
+            .three => "Three",
+            .four => "Four",
+            .five => "Five",
+            .six => "Six",
+            .seven => "Seven",
+            .eight => "Eight",
+            .nine => "Nine",
+            .equals => "Equals",
+            .newline => "NewLine",
+            .colon => "Colon",
+            .semicolon => "Semicolon",
+            .plus => "Plus",
+            .minus => "Minus",
+            .star => "Star",
+            .fslash => "Forward Slash",
+            .bslash => "Backslash",
+            .andpercand => "Andpercand",
+            .carot => "Carot",
+            .comma => "Comma",
+            .percent => "Percentage",
+            .bang => "Bang",
+            .lbracket => "Left Bracket",
+            .rbracket => "Right Bracket",
+            .lcurly => "Left Curly",
+            .rcurly => "Right Curly",
+            .lsquare => "Left Square",
+            .rsquare => "Right Square",
+            .underscore => "Underscore",
+            .at => "At",
+            .expr => |ex| ex,
+            .keyword => |keyword| switch (keyword) {
+                .import => "Import",
+                .as => "As",
+                .define => "Define",
+            },
+            .identifier => |identifier| identifier,
+            else => "Unidentied Token",
+        };
+    }
 };
 
 pub const Keyword = enum {

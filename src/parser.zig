@@ -5,36 +5,8 @@ const node_object = @import("node.zig").node_object;
 const node_fn = @import("node.zig").node_fn;
 const Token = @import("token.zig").Token;
 const redlib = @import("stdlib.zig");
-
-pub const ParseErrorKind = error{
-    InvalidNodeIdentifier,
-    AllocatorError,
-    InvalidTokenOrder,
-    InvalidObjIdentifier,
-    InvalidColourIdentifier,
-    InvalidImport,
-    ExistingIdentifer,
-    InvalidImportLen,
-    InvalidFunctionName,
-    InvalidParameterList,
-    FunctionCreationError,
-    InvalidFunctionParameter,
-    InvalidKeywordError,
-};
-
-pub const ParseError = struct {
-    kind: ?ParseErrorKind,
-    nodes: ?[]node,
-    token_num: usize,
-
-    pub fn Err(kind: ParseErrorKind, num: usize) ParseError {
-        return ParseError{
-            .kind = kind,
-            .nodes = null,
-            .token_num = num,
-        };
-    }
-};
+const ParseError = @import("error.zig").ParseError;
+const ParseErrorKind = @import("error.zig").ParseErrorKind;
 
 pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
     var import_map = std.AutoHashMap(u8, redlib.imports).init(alloc);
@@ -53,7 +25,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                         i += 1;
                         const t = tokens[i];
                         const imp = redlib.imports.is_keyword(t.identifier) orelse {
-                            std.debug.print("Invalid import\n", .{});
                             return ParseError.Err(ParseErrorKind.InvalidImport, i);
                         };
                         i += 1;
@@ -64,6 +35,9 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                             return ParseError.Err(ParseErrorKind.InvalidKeywordError, i);
                         }
                         i += 1;
+                        if (tokens[i] != Token.identifier) {
+                            return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                        }
                         const identifier = tokens[i].identifier;
 
                         if (identifier.len != 1) {
@@ -73,13 +47,17 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                         import_map.put(identifier[0], imp) catch {
                             return ParseError.Err(ParseErrorKind.ExistingIdentifer, i);
                         };
-                        std.debug.print("Imported: {} as {c}\n", .{ imp, identifier[0] });
+                        // std.debug.print("Imported: {} as {c}\n", .{ imp, identifier[0] });
                     },
                     .define => {
                         i += 1;
                         // keyword(define) identifier(node_name) identifier(node_object_name)
                         const node_name = tokens[i].identifier;
                         i += 1;
+
+                        if (tokens[i] != Token.identifier) {
+                            return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                        }
 
                         const node_object_name = tokens[i].identifier;
                         const node_obj = node_object.str_to_obj(node_object_name);
@@ -120,7 +98,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                 }
                 const fn_name = tokens[i].identifier;
                 if (n.?.fns.get(fn_name)) |_| {
-                    std.debug.print("Invalid function\n", .{});
                     return ParseError.Err(ParseErrorKind.InvalidFunctionName, i);
                 }
 
@@ -168,7 +145,7 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                     return ParseError.Err(ParseErrorKind.InvalidNodeIdentifier, i);
                 };
 
-                std.debug.print("Added fn, new count: {}\n", .{n.?.fns.count()});
+                // std.debug.print("Added fn, new count: {}\n", .{n.?.fns.count()});
             },
             .identifier => |_| {
                 return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);

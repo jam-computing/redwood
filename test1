@@ -1,9 +1,0 @@
-import tick as t
-
-define test plane
-define testone plane
-
-@test funparameter, second) = x^2
-@test fljkl() = x^2
-@test hudisa() = x^2
-@test dsanjkds(third) = x^2

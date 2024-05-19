@@ -2,6 +2,7 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const logger = @import("logger.zig");
+const err = @import("error.zig");
 const Token = @import("token.zig").Token;
 
 pub fn main() !u8 {
@@ -37,53 +38,14 @@ pub fn main() !u8 {
 
     const output = parser.parse(try tokens.toOwnedSlice(), alloc);
 
-    if (output.kind) |kind| {
-        const token_num = output.token_num;
-        var token_counter: usize = token_num;
-        var i: usize = 0;
-
-        while (i < token_lines.items.len) : (i += 1) {
-            const line = token_lines.items[i];
-
-            if (line.len <= token_counter) {
-                token_counter -= line.len;
-                continue;
-            }
-
-            var underline = std.ArrayList(u8).init(alloc);
-            defer underline.deinit();
-            var word_num: usize = 0;
-            var k: usize = 0;
-            while (k < file_lines[i].len) : (k += 1) {
-                if (file_lines[i][k] == ' ') {
-                    word_num += 1;
-                }
-
-                if (word_num == token_counter and file_lines[i][k] != ' ') {
-                    underline.append('^') catch {
-                        continue;
-                    };
-                } else {
-                    underline.append('~') catch {
-                        continue;
-                    };
-                }
-            }
-            _ = underline.pop();
-
-            // This is the line number
-            std.debug.print("\x1B[31m{}\x1B[0m, on line {}\n", .{ kind, i + 1 });
-            std.debug.print("{s}\x1B[32m{s}\x1B[0m\n", .{ file_lines[i], underline.items });
-            break;
-        }
-    }
+    err.report_compiletime_err(output, file_lines, token_lines, name, alloc);
 
     if (output.nodes) |nodes| {
         for (nodes) |node| {
-            std.debug.print("Node Object: {}, Node Colour: {?s}, Node Fn Count: {}\n", .{ node.object, node.colour, node.fns.count() });
+            // std.debug.print("Node Object: {}, Node Colour: {?s}, Node Fn Count: {}\n", .{ node.object, node.colour, node.fns.count() });
             var iter = node.fns.iterator();
-            while (iter.next()) |f| {
-                std.debug.print("{}, \n", .{f});
+            while (iter.next()) |_| {
+                // std.debug.print("{}, \n", .{f});
             }
         }
     }
@@ -96,7 +58,10 @@ fn get_file_name() !?[]const u8 {
     var i: u8 = 0;
     while (args.next()) |arg| {
         if (i == 1) {
-            return arg;
+            if (std.mem.containsAtLeast(u8, arg, 1, ".rw")) {
+                return arg;
+            }
+            return null;
         }
         i += 1;
     }
