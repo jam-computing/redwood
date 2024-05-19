@@ -30,6 +30,13 @@ define p plane
 @p f(t) = t, t, t
 ```
 
+### Creating animations
+
+- With arguement flags?
+- Do it in repl?
+- Config file?
 
 
-better compiler messages plaesae :pray:
+###  idk
+
+actually do redefining stuff

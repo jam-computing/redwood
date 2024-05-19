@@ -42,7 +42,7 @@ pub fn main() !u8 {
 
     if (output.nodes) |nodes| {
         for (nodes) |node| {
-            // std.debug.print("Node Object: {}, Node Colour: {?s}, Node Fn Count: {}\n", .{ node.object, node.colour, node.fns.count() });
+            std.debug.print("Node Object: {}, Node Colour: {?s}, Node Fn Count: {}\n", .{ node.object, node.colour, node.fns.count() });
             var iter = node.fns.iterator();
             while (iter.next()) |_| {
                 // std.debug.print("{}, \n", .{f});

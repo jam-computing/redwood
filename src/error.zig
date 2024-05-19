@@ -68,7 +68,7 @@ pub fn report_compiletime_err(output: ParseError, file_lines: [][]const u8, toke
             //  -> Line here
             //       ~~~^~~~
 
-            std.debug.print("{s}:{}:{} : \x1B[31merror\x1B[0m : {s}\n", .{ filename, i + 1, char_num, switch (kind) {
+            std.debug.print("|{s}:{}:{}| : \x1B[31merror\x1B[0m : {s}\n", .{ filename, i + 1, char_num, switch (kind) {
                 ParseErrorKind.AllocatorError => "Memory space exceeded. What are you doing.",
                 ParseErrorKind.InvalidNodeIdentifier => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The node: \"{s}\" does not exist.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
