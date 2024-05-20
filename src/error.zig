@@ -123,6 +123,8 @@ pub fn report_compiletime_err(output: ParseResult, file_lines: [][]const u8, tok
                 ParseError.MissingCurlyBracket => "Curly brackets are expected around subtype declarations",
                 ParseError.ExpectedEquals => "Expected '=' after variable declaration",
                 ParseError.ExpectedNumber => "Expected value to be a number",
+                ParseError.ExpectedAttrIdentifier => "Expected identifier after a '!' ( Attribute Flag )",
+                ParseError.InvalidAttrName => "Invalid identifier for attribute found",
             } });
 
             std.debug.print("   -> {s}\x1B[32m      {s}\x1B[0m\n", .{ file_lines[i], underline.items });
@@ -152,4 +154,6 @@ pub const ParseError = error{
     MissingCurlyBracket,
     ExpectedEquals,
     ExpectedNumber,
+    ExpectedAttrIdentifier,
+    InvalidAttrName,
 };

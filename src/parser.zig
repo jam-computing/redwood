@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const attr = @import("attribute.zig").attr;
 const node = @import("node.zig").node;
 const node_object = @import("node.zig").node_object;
 const node_fn = @import("node.zig").node_fn;
@@ -131,7 +132,26 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                                 break :blk;
                             }
 
-                            frame_count = value;
+                            i += 1;
+
+                            if (tokens.len == i) {
+                                break :blk;
+                            }
+
+                            if (tokens[i] != Token.identifier) {
+                                return ParseResult.Err(ParseError.ExpectedAttrIdentifier, i);
+                            }
+
+                            const attrib = attr.is_type(tokens[i].identifier) orelse {
+                                return ParseResult.Err(ParseError.InvalidAttrName, i);
+                            };
+
+                            switch (attrib) {
+                                .frame_count => {
+                                    frame_count = value;
+                                },
+                                else => {},
+                            }
                         }
 
                         if (!std.mem.eql(u8, iden, "_")) {
