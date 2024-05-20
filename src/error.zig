@@ -125,6 +125,7 @@ pub fn report_compiletime_err(output: ParseResult, file_lines: [][]const u8, tok
                 ParseError.ExpectedNumber => "Expected value to be a number",
                 ParseError.ExpectedAttrIdentifier => "Expected identifier after a '!' ( Attribute Flag )",
                 ParseError.InvalidAttrName => "Invalid identifier for attribute found",
+                ParseError.NotTypeInference => "The type cannot be inferred from usage. Please specify with `:`",
             } });
 
             std.debug.print("   -> {s}\x1B[32m      {s}\x1B[0m\n", .{ file_lines[i], underline.items });
@@ -156,4 +157,5 @@ pub const ParseError = error{
     ExpectedNumber,
     ExpectedAttrIdentifier,
     InvalidAttrName,
+    NotTypeInference,
 };

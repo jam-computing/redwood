@@ -56,14 +56,71 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
 
                         std.debug.print("{} imported as {s}\n", .{ imp, identifier });
                     },
-                    .let => {
+                    .let => letblk: {
                         i += 1;
                         // keyword(let) identifier(iden) colon identifier(type)
                         const iden = tokens[i].identifier;
                         i += 1;
-
                         if (tokens[i] != Token.colon) {
-                            return ParseResult.Err(ParseError.ExpectedColon, i);
+                            // Type inference here
+                            if (tokens[i] != Token.equals) {
+                                return ParseResult.Err(ParseError.ExpectedColon, i);
+                            }
+
+                            i += 1;
+
+                            if (tokens[i] != Token.expr) {
+                                return ParseResult.Err(ParseError.ExpectedIdentifier, i);
+                            }
+
+                            const inf_type = tokens[i].expr;
+
+                            const value = std.fmt.parseInt(usize, inf_type, 10) catch {
+                                // Not a uint, err for now until think of better way to do this
+                                return ParseResult.Err(ParseError.NotTypeInference, i);
+                            };
+
+                            const rw_type = stdlib._type{ .u = value };
+
+                            bangblk: {
+                                i += 1;
+
+                                if (tokens.len == i) {
+                                    break :bangblk;
+                                }
+
+                                if (tokens[i] != Token.bang) {
+                                    break :bangblk;
+                                }
+
+                                i += 1;
+
+                                if (tokens.len == i) {
+                                    break :bangblk;
+                                }
+
+                                if (tokens[i] != Token.identifier) {
+                                    return ParseResult.Err(ParseError.ExpectedAttrIdentifier, i);
+                                }
+
+                                const attrib = attr.is_type(tokens[i].identifier) orelse {
+                                    return ParseResult.Err(ParseError.InvalidAttrName, i);
+                                };
+
+                                switch (attrib) {
+                                    .frame_count => {
+                                        frame_count = value;
+                                    },
+                                    else => {},
+                                }
+                            }
+
+                            if (!std.mem.eql(u8, iden, "_")) {
+                                value_map.put(iden, stdlib.value{ .type = rw_type, .name = iden }) catch {
+                                    return ParseResult.Err(ParseError.AllocatorError, i);
+                                };
+                            }
+                            break :letblk;
                         }
 
                         i += 1;
@@ -117,10 +174,11 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                                 return ParseResult.Err(ParseError.ExpectedNumber, i);
                             }
                             const num = tokens[i].expr;
-                            const value = std.fmt.parseInt(usize, num, 10) catch {
-                                return ParseResult.Err(ParseError.ExpectedNumber, i);
+                            const value = stdlib._type.infer(num) orelse {
+                                return ParseResult.Err(ParseError.NotTypeInference, i);
                             };
-                            rw_type.u = value;
+
+                            rw_type.u = value.u;
 
                             i += 1;
 
@@ -148,7 +206,7 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
 
                             switch (attrib) {
                                 .frame_count => {
-                                    frame_count = value;
+                                    frame_count = value.u;
                                 },
                                 else => {},
                             }
@@ -254,8 +312,51 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
 
                 // std.debug.print("Added fn, new count: {}\n", .{n.?.fns.count()});
             },
-            .identifier => |_| {
-                return ParseResult.Err(ParseError.InvalidTokenOrder, i);
+            .identifier => iden: {
+                // try to infer
+
+                const iden = tokens[i].identifier;
+
+                const t = stdlib._type.infer(iden) orelse {
+                    std.debug.print("Could not infer: {s}\n", .{iden});
+                    break;
+                };
+
+                switch (t) {
+                    .u => |value| {
+                        i += 1;
+
+                        if (tokens.len - 1 == i) {
+                            break :iden;
+                        }
+
+                        if (tokens[i] != Token.bang) {
+                            break :iden;
+                        }
+
+                        i += 1;
+
+                        if (tokens.len - 1 == i) {
+                            break :iden;
+                        }
+
+                        if (tokens[i] != Token.identifier) {
+                            return ParseResult.Err(ParseError.ExpectedAttrIdentifier, i);
+                        }
+
+                        const attrib = attr.is_type(tokens[i].identifier) orelse {
+                            return ParseResult.Err(ParseError.InvalidAttrName, i);
+                        };
+
+                        switch (attrib) {
+                            .frame_count => {
+                                frame_count = value;
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
             },
             else => {},
         }

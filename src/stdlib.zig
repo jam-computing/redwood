@@ -36,6 +36,13 @@ pub const _type = union(enum) {
         }
         return null;
     }
+
+    pub fn infer(string: []const u8) ?_type {
+        const val = std.fmt.parseInt(usize, string, 10) catch {
+            return null;
+        };
+        return _type{ .u = val };
+    }
 };
 
 pub const vector3 = struct {
