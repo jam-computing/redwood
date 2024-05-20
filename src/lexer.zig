@@ -31,7 +31,7 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
             '}' => Token.rcurly,
             '[' => Token.lsquare,
             ']' => Token.rsquare,
-            '_' => Token.underscore,
+            '_' => Token{ .identifier = "_" },
             '@' => Token.at,
             // Math expr should always be after equals
             '=' => eql: {
@@ -61,7 +61,7 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
                 defer iden.deinit();
                 while (i < string.len) : (i += 1) {
                     try iden.append(string[i]);
-                    if (i != string.len - 1 and (string[i + 1] == ' ' or string[i + 1] == '!' or string[i + 1] == '\n' or !std.ascii.isAlphanumeric(string[i + 1]))) {
+                    if (i != string.len - 1 and (string[i + 1] == ' ' or string[i + 1] == '!' or string[i + 1] == '\n' or (!std.ascii.isAlphanumeric(string[i + 1]) and string[i + 1] != '_'))) {
                         break;
                     }
                 }

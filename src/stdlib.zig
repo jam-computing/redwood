@@ -31,7 +31,7 @@ pub const _type = union(enum) {
             return _type.none;
         } else if (std.mem.eql(u8, string, "v2")) {
             return _type{ .vector2 = vector2.empty() };
-        } else if (std.mem.eql(u8, string, "u")) {
+        } else if (std.mem.eql(u8, string, "uint")) {
             return _type{ .u = 0 };
         }
         return null;

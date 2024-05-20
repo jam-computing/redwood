@@ -134,9 +134,11 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                             frame_count = value;
                         }
 
-                        value_map.put(iden, stdlib.value{ .type = rw_type, .name = iden }) catch {
-                            return ParseResult.Err(ParseError.AllocatorError, i);
-                        };
+                        if (!std.mem.eql(u8, iden, "_")) {
+                            value_map.put(iden, stdlib.value{ .type = rw_type, .name = iden }) catch {
+                                return ParseResult.Err(ParseError.AllocatorError, i);
+                            };
+                        }
                     },
                     else => {},
                 }
