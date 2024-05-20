@@ -60,6 +60,7 @@ pub fn main() !u8 {
                 std.debug.print("[{s}]: {}\n", .{ value.name, value.type });
             }
         }
+        std.debug.print("Frame Count: {}\n", .{output.frame_count});
     }
     return 0;
 }

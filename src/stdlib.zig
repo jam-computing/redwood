@@ -20,6 +20,7 @@ pub const _type = union(enum) {
     vector3: vector3,
     vector2: vector2,
     node: nodelib.node,
+    u: usize,
     none,
     pub fn is_type(string: []const u8) ?_type {
         if (std.mem.eql(u8, string, "v3")) {
@@ -30,6 +31,8 @@ pub const _type = union(enum) {
             return _type.none;
         } else if (std.mem.eql(u8, string, "v2")) {
             return _type{ .vector2 = vector2.empty() };
+        } else if (std.mem.eql(u8, string, "u")) {
+            return _type{ .u = 0 };
         }
         return null;
     }

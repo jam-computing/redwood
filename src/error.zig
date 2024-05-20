@@ -7,12 +7,14 @@ pub const ParseResult = struct {
     kind: ?ParseError,
     values: ?[]stdlib.value,
     token_num: usize,
+    frame_count: usize,
 
     pub fn Err(kind: ParseError, num: usize) ParseResult {
         return ParseResult{
             .kind = kind,
             .values = null,
             .token_num = num,
+            .frame_count = 0,
         };
     }
 };
@@ -119,6 +121,8 @@ pub fn report_compiletime_err(output: ParseResult, file_lines: [][]const u8, tok
                 ParseError.ExpectedIdentifier => "A valid type identifier is expected after a colon",
                 ParseError.NoBracket => "Brackets are needed after a function identifier declaration",
                 ParseError.MissingCurlyBracket => "Curly brackets are expected around subtype declarations",
+                ParseError.ExpectedEquals => "Expected '=' after variable declaration",
+                ParseError.ExpectedNumber => "Expected value to be a number",
             } });
 
             std.debug.print("   -> {s}\x1B[32m      {s}\x1B[0m\n", .{ file_lines[i], underline.items });
@@ -146,4 +150,6 @@ pub const ParseError = error{
     InvalidType,
     NoBracket,
     MissingCurlyBracket,
+    ExpectedEquals,
+    ExpectedNumber,
 };

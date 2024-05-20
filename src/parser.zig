@@ -18,6 +18,8 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
     var node_map = std.StringHashMap(node).init(alloc);
     defer node_map.deinit();
 
+    var frame_count: usize = 0;
+
     var i: usize = 0;
 
     while (i < tokens.len) {
@@ -104,6 +106,32 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                             if (tokens[i] != Token.rcurly) {
                                 return ParseResult.Err(ParseError.MissingCurlyBracket, i);
                             }
+                        } else if (rw_type == .u) blk: {
+                            i += 1;
+                            if (tokens[i] != Token.equals) {
+                                return ParseResult.Err(ParseError.ExpectedEquals, i);
+                            }
+                            i += 1;
+                            if (tokens[i] != Token.expr) {
+                                return ParseResult.Err(ParseError.ExpectedNumber, i);
+                            }
+                            const num = tokens[i].expr;
+                            const value = std.fmt.parseInt(usize, num, 10) catch {
+                                return ParseResult.Err(ParseError.ExpectedNumber, i);
+                            };
+                            rw_type.u = value;
+
+                            i += 1;
+
+                            if (tokens.len == i) {
+                                break :blk;
+                            }
+
+                            if (tokens[i] != Token.bang) {
+                                break :blk;
+                            }
+
+                            frame_count = value;
                         }
 
                         value_map.put(iden, stdlib.value{ .type = rw_type, .name = iden }) catch {
@@ -231,7 +259,12 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
         val_count += 1;
     }
 
-    return ParseResult{ .values = vals.toOwnedSlice() catch {
-        return ParseResult.Err(ParseError.AllocatorError, i);
-    }, .kind = null, .token_num = 0 };
+    return ParseResult{
+        .values = vals.toOwnedSlice() catch {
+            return ParseResult.Err(ParseError.AllocatorError, i);
+        },
+        .kind = null,
+        .token_num = 0,
+        .frame_count = frame_count,
+    };
 }

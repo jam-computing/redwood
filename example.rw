@@ -1,3 +1,8 @@
 import tick as t
 
 let a: node{plane}
+
+let something: u = 5!
+let a: node
+let v: v3
+let another: u = 4
