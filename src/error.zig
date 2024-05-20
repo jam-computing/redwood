@@ -1,22 +1,23 @@
 const std = @import("std");
 const node = @import("node.zig").node;
+const stdlib = @import("stdlib.zig");
 const Token = @import("token.zig").Token;
 
-pub const ParseError = struct {
-    kind: ?ParseErrorKind,
-    nodes: ?[]node,
+pub const ParseResult = struct {
+    kind: ?ParseError,
+    values: ?[]stdlib.value,
     token_num: usize,
 
-    pub fn Err(kind: ParseErrorKind, num: usize) ParseError {
-        return ParseError{
+    pub fn Err(kind: ParseError, num: usize) ParseResult {
+        return ParseResult{
             .kind = kind,
-            .nodes = null,
+            .values = null,
             .token_num = num,
         };
     }
 };
 
-pub fn report_compiletime_err(output: ParseError, file_lines: [][]const u8, token_lines: std.ArrayList([]const Token), filename: []const u8, alloc: std.mem.Allocator) void {
+pub fn report_compiletime_err(output: ParseResult, file_lines: [][]const u8, token_lines: std.ArrayList([]const Token), filename: []const u8, alloc: std.mem.Allocator) void {
     if (output.kind) |kind| {
         const token_num = output.token_num;
         var token_counter: usize = token_num;
@@ -64,55 +65,60 @@ pub fn report_compiletime_err(output: ParseError, file_lines: [][]const u8, toke
             // Cuase 1 bgger than what it should be obvs
             _ = underline.pop();
 
-            // Filename:linenumber:char : error : ERROR_MSG
-            //  -> Line here
-            //       ~~~^~~~
-
             std.debug.print("|{s}:{}:{}| : \x1B[31merror\x1B[0m : {s}\n", .{ filename, i + 1, char_num, switch (kind) {
-                ParseErrorKind.AllocatorError => "Memory space exceeded. What are you doing.",
-                ParseErrorKind.InvalidNodeIdentifier => blk: {
+                ParseError.AllocatorError => "Memory space exceeded. What are you doing.",
+                ParseError.InvalidNodeIdentifier => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The node: \"{s}\" does not exist.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
                         break :blk "InvalidNodeIdentifier, could not print error message.";
                     };
                 },
-                ParseErrorKind.InvalidTokenOrder => blk: {
+                ParseError.InvalidTokenOrder => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The token: \"{s}\" was not expected", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
                         break :blk "InvalidTokenOrder, could not print error message.";
                     };
                 },
-                ParseErrorKind.InvalidColourIdentifier => blk: {
+                ParseError.InvalidColourIdentifier => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The specified colour: \"{s}\" is an invalid colour.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
-                        break :blk "InvalidTokenOrder, could not print error message.";
+                        break :blk "InvalidColourIdentifier, could not print error message.";
                     };
                 },
-                ParseErrorKind.ExistingIdentifer => blk: {
+                ParseError.ExistingIdentifer => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The identifier: \"{s}\" has already been used in the program.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
-                        break :blk "InvalidTokenOrder, could not print error message.";
+                        break :blk "ExistingIdentifier, could not print error message.";
                     };
                 },
-                ParseErrorKind.InvalidFunctionName => blk: {
+                ParseError.InvalidFunctionName => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The name: \"{s}\" is not a valid function name.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
-                        break :blk "InvalidTokenOrder, could not print error message.";
+                        break :blk "InvalidFunctionName, could not print error message.";
                     };
                 },
-                ParseErrorKind.InvalidParameterList => blk: {
+                ParseError.InvalidParameterList => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The parameter list should have comma separated values: \"{s}\".", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
-                        break :blk "InvalidTokenOrder, could not print error message.";
+                        break :blk "InvalidParameterList, could not print error message.";
                     };
                 },
-                ParseErrorKind.InvalidFunctionParameter => blk: {
+                ParseError.InvalidFunctionParameter => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The function parameter: \"{s}\" is not a valid parameter.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
-                        break :blk "InvalidTokenOrder, could not print error message.";
+                        break :blk "InvalidFucntionParameter, could not print error message.";
                     };
                 },
-                ParseErrorKind.InvalidKeywordError => blk: {
+                ParseError.InvalidKeywordError => blk: {
                     break :blk std.fmt.allocPrint(alloc, "The keyword: \"{s}\" is not a valid keyword.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
-                        break :blk "InvalidTokenOrder, could not print error message.";
+                        break :blk "InvalidKeywordError, could not print error message.";
                     };
                 },
-                ParseErrorKind.FunctionCreationError => "There was an error allocating the function. This is either zigs or your problem. Good luck.",
-                ParseErrorKind.InvalidImport => "The import keyword should always be followed by a valid identifier.",
-                ParseErrorKind.InvalidImportLen => "The import alias should only be one character long.",
+                ParseError.InvalidType => blk: {
+                    break :blk std.fmt.allocPrint(alloc, "The type: \"{s}\" does not exist.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
+                        break :blk "InvalidType, could not print error message.";
+                    };
+                },
+                ParseError.FunctionCreationError => "There was an error allocating the function. This is either zigs or your problem. Good luck.",
+                ParseError.InvalidImport => "The import keyword should always be followed by a valid identifier.",
+                ParseError.InvalidImportLen => "The import alias should only be one character long.",
+                ParseError.ExpectedColon => "Colon Expected Before Node Type.",
+                ParseError.ExpectedIdentifier => "A valid type identifier is expected after a colon",
+                ParseError.NoBracket => "Brackets are needed after a function identifier declaration",
+                ParseError.MissingCurlyBracket => "Curly brackets are expected around subtype declarations",
             } });
 
             std.debug.print("   -> {s}\x1B[32m      {s}\x1B[0m\n", .{ file_lines[i], underline.items });
@@ -122,7 +128,7 @@ pub fn report_compiletime_err(output: ParseError, file_lines: [][]const u8, toke
     }
 }
 
-pub const ParseErrorKind = error{
+pub const ParseError = error{
     InvalidNodeIdentifier,
     AllocatorError,
     InvalidTokenOrder,
@@ -135,4 +141,9 @@ pub const ParseErrorKind = error{
     FunctionCreationError,
     InvalidFunctionParameter,
     InvalidKeywordError,
+    ExpectedColon,
+    ExpectedIdentifier,
+    InvalidType,
+    NoBracket,
+    MissingCurlyBracket,
 };

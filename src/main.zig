@@ -7,15 +7,25 @@ const Token = @import("token.zig").Token;
 
 pub fn main() !u8 {
     const alloc: std.mem.Allocator = std.heap.page_allocator;
-    const name = try get_file_name() orelse "";
+    const names = try get_file_names(alloc) orelse unreachable;
 
-    const file_lines = get_file(name, alloc) catch {
+    const file_lines = get_file(names[0], alloc) catch {
         try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
         return 1;
     } orelse {
         try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
         return 1;
     };
+
+    if (names.len > 1) {
+        _ = get_file(names[1], alloc) catch {
+            try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
+            return 1;
+        } orelse {
+            try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
+            return 1;
+        };
+    }
 
     var token_lines = std.ArrayList([]const Token).init(alloc);
     defer token_lines.deinit();
@@ -38,34 +48,46 @@ pub fn main() !u8 {
 
     const output = parser.parse(try tokens.toOwnedSlice(), alloc);
 
-    err.report_compiletime_err(output, file_lines, token_lines, name, alloc);
+    err.report_compiletime_err(output, file_lines, token_lines, names[0], alloc);
 
-    if (output.nodes) |nodes| {
-        for (nodes) |node| {
-            std.debug.print("Node Object: {}, Node Colour: {?s}, Node Fn Count: {}\n", .{ node.object, node.colour, node.fns.count() });
-            var iter = node.fns.iterator();
-            while (iter.next()) |_| {
-                // std.debug.print("{}, \n", .{f});
+    if (output.values) |values| {
+        for (values) |value| {
+            if (value.type == .node) {
+                std.debug.print("[{s}]: {}, {}\n", .{ value.name, value.type.node.object, value.type.node.fns.?.count() });
+            } else if (value.type == .vector3) {
+                std.debug.print("[{s}]: {}\n", .{ value.name, value.type.vector3 });
+            } else {
+                std.debug.print("[{s}]: {}\n", .{ value.name, value.type });
             }
         }
     }
     return 0;
 }
 
-fn get_file_name() !?[]const u8 {
+fn get_file_names(alloc: std.mem.Allocator) !?[][]const u8 {
     var args = std.process.args();
 
     var i: u8 = 0;
+    var list = std.ArrayList([]const u8).init(alloc);
+    defer list.deinit();
     while (args.next()) |arg| {
         if (i == 1) {
             if (std.mem.containsAtLeast(u8, arg, 1, ".rw")) {
-                return arg;
+                try list.append(arg);
+            } else {
+                std.debug.print("Please specify a file path.\n", .{});
+                return null;
             }
-            return null;
         }
+        if (i == 2) {
+            if (std.mem.containsAtLeast(u8, arg, 1, ".json")) {
+                try list.append(arg);
+            }
+        }
+
         i += 1;
     }
-    return null;
+    return try list.toOwnedSlice();
 }
 
 fn get_file(name: []const u8, alloc: std.mem.Allocator) !?[][]const u8 {

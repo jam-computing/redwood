@@ -1,11 +1,20 @@
 const std = @import("std");
+const std_lib = @import("stdlib.zig");
 
 pub const node = struct {
-    name: []const u8,
     object: node_object,
     colour: ?[]const u8,
-    fns: std.StringHashMap(node_fn),
+    fns: ?std.StringHashMap(node_fn),
+
+    pub fn empty() node {
+        return node{
+            .object = node_object.none,
+            .fns = null,
+            .colour = null,
+        };
+    }
 };
+
 pub const node_object = enum {
     none,
     plane,
@@ -22,6 +31,7 @@ pub const node_object = enum {
 };
 
 pub const node_fn = struct {
+    return_type: std_lib._type,
     math: []const u8,
     parameters: [][]const u8,
 };

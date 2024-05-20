@@ -12,15 +12,6 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
     while (i < string.len) : (i += 1) {
         const t = switch (string[i]) {
             ' ' => continue,
-            '1' => Token.one,
-            '2' => Token.two,
-            '3' => Token.three,
-            '4' => Token.four,
-            '5' => Token.five,
-            '6' => Token.six,
-            '7' => Token.seven,
-            '8' => Token.eight,
-            '9' => Token.nine,
             '\n' => Token.newline,
             ':' => Token.colon,
             ';' => Token.semicolon,
@@ -60,14 +51,14 @@ pub fn lex(string: []const u8, alloc: std.mem.Allocator) ![]const Token {
                 break :eql Token{ .expr = trimmed };
             },
             else => blk: {
-                if (!std.ascii.isAlphabetic(string[i])) {
+                if (!std.ascii.isAlphanumeric(string[i])) {
                     break :blk Token.none;
                 }
                 var iden = std.ArrayList(u8).init(alloc);
                 defer iden.deinit();
                 while (i < string.len) : (i += 1) {
                     try iden.append(string[i]);
-                    if (i != string.len - 1 and (string[i + 1] == ' ' or string[i + 1] == '\n' or !std.ascii.isAlphabetic(string[i + 1]))) {
+                    if (i != string.len - 1 and (string[i + 1] == ' ' or string[i + 1] == '\n' or !std.ascii.isAlphanumeric(string[i + 1]))) {
                         break;
                     }
                 }
@@ -91,15 +82,6 @@ fn print_tokens(tokens: []Token) void {
     for (tokens) |token| {
         std.debug.print("{s}\n", .{switch (token) {
             .space => "Space",
-            .one => "One",
-            .two => "Two",
-            .three => "Three",
-            .four => "Four",
-            .five => "Five",
-            .six => "Six",
-            .seven => "Seven",
-            .eight => "Eight",
-            .nine => "Nine",
             .equals => "Equals",
             .newline => "NewLine",
             .colon => "Colon",

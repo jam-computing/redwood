@@ -1,5 +1,3 @@
 import tick as t
 
-define plane plane
-
-@plane f(t) = t
+let a: node{plane}

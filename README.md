@@ -38,5 +38,12 @@ define p plane
 
 
 ###  idk
-
 actually do redefining stuff
+
+## Add frame count in code
+
+define 50: frame
+
+### Other syntax features
+
+let p: node{plane}

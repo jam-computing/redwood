@@ -4,13 +4,16 @@ const node = @import("node.zig").node;
 const node_object = @import("node.zig").node_object;
 const node_fn = @import("node.zig").node_fn;
 const Token = @import("token.zig").Token;
-const redlib = @import("stdlib.zig");
+const stdlib = @import("stdlib.zig");
+const ParseResult = @import("error.zig").ParseResult;
 const ParseError = @import("error.zig").ParseError;
-const ParseErrorKind = @import("error.zig").ParseErrorKind;
 
-pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
-    var import_map = std.AutoHashMap(u8, redlib.imports).init(alloc);
+pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
+    var import_map = std.StringHashMap(stdlib.imports).init(alloc);
     defer import_map.deinit();
+
+    var value_map = std.StringHashMap(stdlib.value).init(alloc);
+    defer value_map.deinit();
 
     var node_map = std.StringHashMap(node).init(alloc);
     defer node_map.deinit();
@@ -24,51 +27,88 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                     .import => {
                         i += 1;
                         const t = tokens[i];
-                        const imp = redlib.imports.is_keyword(t.identifier) orelse {
-                            return ParseError.Err(ParseErrorKind.InvalidImport, i);
+                        const imp = stdlib.imports.is_keyword(t.identifier) orelse {
+                            return ParseResult.Err(ParseError.InvalidImport, i);
                         };
+
                         i += 1;
                         if (tokens[i] != Token.keyword) {
-                            return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                            return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                         }
+
                         if (tokens[i].keyword != .as) {
-                            return ParseError.Err(ParseErrorKind.InvalidKeywordError, i);
+                            return ParseResult.Err(ParseError.InvalidKeywordError, i);
                         }
+
                         i += 1;
+
                         if (tokens[i] != Token.identifier) {
-                            return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                            return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                         }
                         const identifier = tokens[i].identifier;
 
-                        if (identifier.len != 1) {
-                            return ParseError.Err(ParseErrorKind.InvalidImportLen, i);
+                        import_map.put(identifier, imp) catch {
+                            return ParseResult.Err(ParseError.ExistingIdentifer, i);
+                        };
+
+                        std.debug.print("{} imported as {s}\n", .{ imp, identifier });
+                    },
+                    .let => {
+                        i += 1;
+                        // keyword(let) identifier(iden) colon identifier(type)
+                        const iden = tokens[i].identifier;
+                        i += 1;
+
+                        if (tokens[i] != Token.colon) {
+                            return ParseResult.Err(ParseError.ExpectedColon, i);
                         }
 
-                        import_map.put(identifier[0], imp) catch {
-                            return ParseError.Err(ParseErrorKind.ExistingIdentifer, i);
-                        };
-                        // std.debug.print("Imported: {} as {c}\n", .{ imp, identifier[0] });
-                    },
-                    .define => {
-                        i += 1;
-                        // keyword(define) identifier(node_name) identifier(node_object_name)
-                        const node_name = tokens[i].identifier;
                         i += 1;
 
                         if (tokens[i] != Token.identifier) {
-                            return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                            return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                         }
 
-                        const node_object_name = tokens[i].identifier;
-                        const node_obj = node_object.str_to_obj(node_object_name);
+                        const type_name = tokens[i].identifier;
 
-                        if (node_obj) |obj| {
-                            node_map.put(node_name, node{ .name = node_name, .object = obj, .colour = null, .fns = std.StringHashMap(node_fn).init(alloc) }) catch {
-                                return ParseError.Err(ParseErrorKind.ExistingIdentifer, i);
+                        var rw_type = stdlib._type.is_type(type_name) orelse {
+                            return ParseResult.Err(ParseError.InvalidType, i);
+                        };
+
+                        if (rw_type == .node) blk: {
+                            i += 1;
+                            if (tokens[i] != Token.lcurly) {
+                                rw_type.node = node{ .object = .none, .colour = null, .fns = std.StringHashMap(node_fn).init(alloc) };
+                                break :blk;
+                            }
+
+                            i += 1;
+
+                            if (tokens[i] == Token.rcurly) {
+                                rw_type.node = node{ .object = .none, .colour = null, .fns = std.StringHashMap(node_fn).init(alloc) };
+                                break :blk;
+                            }
+
+                            if (tokens[i] != Token.identifier) {
+                                return ParseResult.Err(ParseError.AllocatorError, i);
+                            }
+
+                            const node_obj = node_object.str_to_obj(tokens[i].identifier) orelse {
+                                return ParseResult.Err(ParseError.InvalidType, i);
                             };
-                        } else {
-                            return ParseError.Err(ParseErrorKind.InvalidNodeIdentifier, i);
+
+                            rw_type.node = node{ .object = node_obj, .colour = null, .fns = std.StringHashMap(node_fn).init(alloc) };
+
+                            i += 1;
+
+                            if (tokens[i] != Token.rcurly) {
+                                return ParseResult.Err(ParseError.MissingCurlyBracket, i);
+                            }
                         }
+
+                        value_map.put(iden, stdlib.value{ .type = rw_type, .name = iden }) catch {
+                            return ParseResult.Err(ParseError.AllocatorError, i);
+                        };
                     },
                     else => {},
                 }
@@ -80,7 +120,7 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                 // token(math_expr)
 
                 if (tokens[i] != Token.identifier) {
-                    return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                    return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                 }
 
                 const node_name = tokens[i].identifier;
@@ -89,19 +129,24 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                 if (node_map.get(node_name)) |nmap_get| {
                     n = nmap_get;
                 } else {
-                    return ParseError.Err(ParseErrorKind.InvalidNodeIdentifier, i);
+                    return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
                 }
 
                 i += 1;
+
                 if (tokens[i] != Token.identifier) {
-                    return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
-                }
-                const fn_name = tokens[i].identifier;
-                if (n.?.fns.get(fn_name)) |_| {
-                    return ParseError.Err(ParseErrorKind.InvalidFunctionName, i);
+                    return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                 }
 
-                i += 2;
+                const fn_name = tokens[i].identifier;
+
+                i += 1;
+
+                if (tokens[i] != Token.lbracket) {
+                    return ParseResult.Err(ParseError.NoBracket, i);
+                }
+
+                i += 1;
 
                 var parameters = std.ArrayList([]const u8).init(alloc);
                 defer parameters.deinit();
@@ -115,51 +160,63 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
                     } else if (tokens[i] == Token.comma) {
                         continue;
                     } else {
-                        return ParseError.Err(ParseErrorKind.InvalidParameterList, i);
+                        return ParseResult.Err(ParseError.InvalidParameterList, i);
                     }
                 }
 
                 i += 1;
+                if (tokens[i] != Token.colon) {
+                    return ParseResult.Err(ParseError.ExpectedColon, i);
+                }
+
+                i += 1;
+                if (tokens[i] != Token.identifier) {
+                    return ParseResult.Err(ParseError.ExpectedIdentifier, i);
+                }
+
+                _ = tokens[i].identifier;
+
+                i += 1;
                 if (tokens[i] != Token.equals) {
-                    return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                    return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                 }
 
                 i += 1;
 
                 if (tokens[i] != Token.expr) {
-                    return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                    return ParseResult.Err(ParseError.InvalidTokenOrder, i);
                 }
 
-                const _fn = node_fn{ .math = tokens[i].expr, .parameters = parameters.toOwnedSlice() catch {
-                    return ParseError.Err(ParseErrorKind.InvalidFunctionParameter, i);
+                const _fn = node_fn{ .math = tokens[i].expr, .return_type = stdlib._type.none, .parameters = parameters.toOwnedSlice() catch {
+                    return ParseResult.Err(ParseError.InvalidFunctionParameter, i);
                 } };
 
-                n.?.fns.put(fn_name, _fn) catch {
-                    return ParseError.Err(ParseErrorKind.FunctionCreationError, i);
+                n.?.fns.?.put(fn_name, _fn) catch {
+                    return ParseResult.Err(ParseError.FunctionCreationError, i);
                 };
 
                 if (!node_map.remove(node_name)) {
-                    return ParseError.Err(ParseErrorKind.InvalidNodeIdentifier, i);
+                    return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
                 }
                 node_map.put(node_name, n.?) catch {
-                    return ParseError.Err(ParseErrorKind.InvalidNodeIdentifier, i);
+                    return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
                 };
 
                 // std.debug.print("Added fn, new count: {}\n", .{n.?.fns.count()});
             },
             .identifier => |_| {
-                return ParseError.Err(ParseErrorKind.InvalidTokenOrder, i);
+                return ParseResult.Err(ParseError.InvalidTokenOrder, i);
             },
             else => {},
         }
         i += 1;
     }
 
-    var nodes = std.ArrayList(node).init(alloc);
-    defer nodes.deinit();
+    var vals = std.ArrayList(stdlib.value).init(alloc);
+    defer vals.deinit();
 
-    var values = node_map.valueIterator();
-    const count = node_map.count();
+    var values = value_map.valueIterator();
+    const count = value_map.count();
 
     var val_count: usize = 0;
 
@@ -167,14 +224,14 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseError {
         if (val_count == count) {
             break;
         }
-        nodes.append(item.*) catch {
-            std.debug.print("Error appending to nodes\n", .{});
+        vals.append(item.*) catch {
+            std.debug.print("Error appending to values\n", .{});
             continue;
         };
         val_count += 1;
     }
 
-    return ParseError{ .nodes = nodes.toOwnedSlice() catch {
-        return ParseError.Err(ParseErrorKind.AllocatorError, i);
+    return ParseResult{ .values = vals.toOwnedSlice() catch {
+        return ParseResult.Err(ParseError.AllocatorError, i);
     }, .kind = null, .token_num = 0 };
 }

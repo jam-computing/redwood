@@ -1,16 +1,6 @@
 const std = @import("std");
 
 pub const Token = union(enum) {
-    one,
-    two,
-    three,
-    four,
-    five,
-    six,
-    seven,
-    eight,
-    nine,
-
     space,
     newline,
     colon,
@@ -50,15 +40,6 @@ pub const Token = union(enum) {
     pub fn token_to_str(token: Token) []const u8 {
         return switch (token) {
             .space => "Space",
-            .one => "One",
-            .two => "Two",
-            .three => "Three",
-            .four => "Four",
-            .five => "Five",
-            .six => "Six",
-            .seven => "Seven",
-            .eight => "Eight",
-            .nine => "Nine",
             .equals => "Equals",
             .newline => "NewLine",
             .colon => "Colon",
@@ -85,7 +66,7 @@ pub const Token = union(enum) {
             .keyword => |keyword| switch (keyword) {
                 .import => "Import",
                 .as => "As",
-                .define => "Define",
+                .let => "Define",
             },
             .identifier => |identifier| identifier,
             else => "Unidentied Token",
@@ -95,7 +76,7 @@ pub const Token = union(enum) {
 
 pub const Keyword = enum {
     import,
-    define,
+    let,
     as,
 
     pub fn str_to_obj(str: []const u8) ?Keyword {
@@ -103,8 +84,8 @@ pub const Keyword = enum {
         if (std.mem.eql(u8, str, "import")) {
             return Keyword.import;
         }
-        if (std.mem.eql(u8, str, "define")) {
-            return Keyword.define;
+        if (std.mem.eql(u8, str, "let")) {
+            return Keyword.let;
         }
         if (std.mem.eql(u8, str, "as")) {
             return Keyword.as;
