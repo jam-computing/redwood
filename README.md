@@ -37,13 +37,9 @@ define p plane
 - Config file?
 
 
-###  idk
-actually do redefining stuff
+###  refacotrj
+refactor code -> Make nice
 
-## Add frame count in code
+### return values on functions ( technically methods ? )
 
-define 50: frame
-
-### Other syntax features
-
-let p: node{plane}
+### Seriosly considering getting rid of "node"s interely

@@ -1,3 +1,6 @@
 import tick as t
 
-10 ! frame_count
+let a: node{plane}
+
+@a f(): v3 = test
+

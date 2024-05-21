@@ -114,18 +114,26 @@ pub fn report_compiletime_err(output: ParseResult, file_lines: [][]const u8, tok
                         break :blk "InvalidType, could not print error message.";
                     };
                 },
+                ParseError.InvalidIdentifier => blk: {
+                    break :blk std.fmt.allocPrint(alloc, "The identifier: \"{s}\" is not valid.", .{Token.token_to_str(tokens_flat.items[output.token_num])}) catch {
+                        break :blk "InvalidIdentifier, could not print error message.";
+                    };
+                },
                 ParseError.FunctionCreationError => "There was an error allocating the function. This is either zigs or your problem. Good luck.",
                 ParseError.InvalidImport => "The import keyword should always be followed by a valid identifier.",
                 ParseError.InvalidImportLen => "The import alias should only be one character long.",
                 ParseError.ExpectedColon => "Colon Expected Before Node Type.",
-                ParseError.ExpectedIdentifier => "A valid type identifier is expected after a colon",
-                ParseError.NoBracket => "Brackets are needed after a function identifier declaration",
-                ParseError.MissingCurlyBracket => "Curly brackets are expected around subtype declarations",
-                ParseError.ExpectedEquals => "Expected '=' after variable declaration",
-                ParseError.ExpectedNumber => "Expected value to be a number",
-                ParseError.ExpectedAttrIdentifier => "Expected identifier after a '!' ( Attribute Flag )",
-                ParseError.InvalidAttrName => "Invalid identifier for attribute found",
-                ParseError.NotTypeInference => "The type cannot be inferred from usage. Please specify with `:`",
+                ParseError.ExpectedIdentifier => "A valid type identifier is expected after a colon.",
+                ParseError.NoBracket => "Brackets are needed after a function identifier declaration.",
+                ParseError.MissingCurlyBracket => "Curly brackets are expected around subtype declarations.",
+                ParseError.ExpectedEquals => "Expected '=' after variable declaration.",
+                ParseError.ExpectedNumber => "Expected value to be a number.",
+                ParseError.ExpectedAttrIdentifier => "Expected identifier after a '!' ( Attribute Flag ).",
+                ParseError.InvalidAttrName => "Invalid identifier for attribute found.",
+                ParseError.NotTypeInference => "The type cannot be inferred from usage. Please specify with `:`.",
+                ParseError.ExpectedBang => "A '!' is expected here.",
+                ParseError.EndOfTokenSequence => "No more tokens expected.",
+                ParseError.ExpectedExpression => "An expression was expected after a '='.",
             } });
 
             std.debug.print("   -> {s}\x1B[32m      {s}\x1B[0m\n", .{ file_lines[i], underline.items });
@@ -158,4 +166,8 @@ pub const ParseError = error{
     ExpectedAttrIdentifier,
     InvalidAttrName,
     NotTypeInference,
+    EndOfTokenSequence,
+    ExpectedExpression,
+    ExpectedBang,
+    InvalidIdentifier,
 };
