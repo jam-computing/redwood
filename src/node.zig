@@ -1,5 +1,6 @@
 const std = @import("std");
-const std_lib = @import("stdlib.zig");
+const stdlib = @import("stdlib.zig");
+const attr = @import("attribute.zig").attr;
 
 pub const node = struct {
     object: node_object,
@@ -33,6 +34,7 @@ pub const node_object = enum {
 pub const method = struct {
     name: []const u8,
     parameters: [][]const u8,
-    return_type: std_lib._type,
+    return_type: stdlib._type,
     math: []const u8,
+    attr: ?attr,
 };

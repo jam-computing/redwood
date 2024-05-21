@@ -17,9 +17,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
     var value_map = std.StringHashMap(stdlib.value).init(alloc);
     defer value_map.deinit();
 
-    var node_map = std.StringHashMap(node).init(alloc);
-    defer node_map.deinit();
-
     var frame_count: usize = 0;
 
     var i: usize = 0;
@@ -107,7 +104,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
 
                 // If the node accessing actually exists
                 if (value_map.get(identifier_name)) |val| {
-                    std.debug.print("Gotten node name as: {s}\n", .{identifier_res.value.?});
                     if (val.type != stdlib._type.node) {
                         return ParseResult.Err(ParseError.InvalidType, i);
                     }
@@ -123,7 +119,17 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                     return e;
                 }
 
-                const meth = method_res.value.?;
+                const attr_res = parse_attr_decl(&i, &tokens);
+
+                if (attr_res.err) |e| {
+                    return e;
+                }
+
+                var meth = method_res.value.?;
+
+                if (attr_res.value) |v| {
+                    meth.attr = v;
+                }
 
                 n.?.fns.?.put(meth.name, meth) catch {
                     return ParseResult.Err(ParseError.FunctionCreationError, i);
@@ -557,6 +563,7 @@ fn parse_method(i: *usize, tokens: *const []const Token) struct { value: ?method
         .parameters = parameter_res.value.?,
         .return_type = type_res.value.?,
         .math = expr_res.value.?,
+        .attr = null,
     };
 
     return .{
@@ -600,8 +607,6 @@ fn parse_parameters(i: *usize, tokens: *const []const Token) struct { value: ?[]
             };
         }
     }
-
-    // i.* += 1;
 
     if (tokens.*[i.*] != Token.rbracket) {
         return .{
