@@ -12,10 +12,8 @@ const ParseError = @import("error.zig").ParseError;
 
 pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
     var import_map = std.StringHashMap(stdlib.imports).init(alloc);
-    defer import_map.deinit();
 
     var value_map = std.StringHashMap(stdlib.value).init(alloc);
-    defer value_map.deinit();
 
     var frame_count: usize = 0;
 
@@ -88,10 +86,6 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                 }
             },
             .at => {
-                // token(@) identifier(node_obj_name) identifier(fn_name)
-                // token(lbracket) list(identifier) token(rbracket) token(equals)
-                // token(math_expr)
-
                 i += 1;
                 const identifier_res = parse_identifier(&i, &tokens);
 
@@ -128,6 +122,7 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                 var meth = method_res.value.?;
 
                 if (attr_res.value) |v| {
+                    std.debug.print("Attribute value found: {}\n", .{v});
                     meth.attr = v;
                 }
 
@@ -210,6 +205,7 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
         .kind = null,
         .token_num = 0,
         .frame_count = frame_count,
+        .imports = import_map,
     };
 }
 
@@ -558,6 +554,7 @@ fn parse_method(i: *usize, tokens: *const []const Token) struct { value: ?method
             .err = e,
         };
     }
+
     const m = method{
         .name = name_res.value.?,
         .parameters = parameter_res.value.?,

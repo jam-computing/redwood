@@ -1,9 +1,15 @@
 const std = @import("std");
+const stdlib = @import("stdlib.zig");
+
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
+
 const logger = @import("logger.zig");
 const err = @import("error.zig");
+
 const Token = @import("token.zig").Token;
+
+const compiler = @import("compile.zig");
 
 pub fn main() !u8 {
     const alloc: std.mem.Allocator = std.heap.page_allocator;
@@ -50,18 +56,36 @@ pub fn main() !u8 {
 
     err.report_compiletime_err(output, file_lines, token_lines, names[0], alloc);
 
+    // debug info
+    if (false) {
+        if (output.values) |values| {
+            for (values) |value| {
+                if (value.type == .node) {
+                    std.debug.print("[{s}]: {}, {}\n", .{ value.name, value.type.node.object, value.type.node.fns.?.count() });
+                } else if (value.type == .vector3) {
+                    std.debug.print("[{s}]: {}\n", .{ value.name, value.type.vector3 });
+                } else {
+                    std.debug.print("[{s}]: {}\n", .{ value.name, value.type });
+                }
+            }
+            std.debug.print("Frame Count: {}\n", .{output.frame_count});
+        }
+    }
+
     if (output.values) |values| {
         for (values) |value| {
-            if (value.type == .node) {
-                std.debug.print("[{s}]: {}, {}\n", .{ value.name, value.type.node.object, value.type.node.fns.?.count() });
-            } else if (value.type == .vector3) {
-                std.debug.print("[{s}]: {}\n", .{ value.name, value.type.vector3 });
-            } else {
-                std.debug.print("[{s}]: {}\n", .{ value.name, value.type });
+            if (value.type != stdlib._type.node) {
+                continue;
             }
+
+            const n = value.type.node;
+
+            _ = compiler.compile_node(&n, &output.imports.?, &output.frame_count) catch {
+                continue;
+            };
         }
-        std.debug.print("Frame Count: {}\n", .{output.frame_count});
     }
+
     return 0;
 }
 

@@ -8,6 +8,7 @@ pub const ParseResult = struct {
     values: ?[]stdlib.value,
     token_num: usize,
     frame_count: usize,
+    imports: ?std.StringHashMap(stdlib.imports),
 
     pub fn Err(kind: ParseError, num: usize) ParseResult {
         return ParseResult{
@@ -15,6 +16,7 @@ pub const ParseResult = struct {
             .values = null,
             .token_num = num,
             .frame_count = 0,
+            .imports = null,
         };
     }
 };

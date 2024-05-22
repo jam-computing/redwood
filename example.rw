@@ -1,6 +1,4 @@
 import tick as t
-
+5 ! count
 let a: node{plane}
-
-@a f(): v3 = test
 
