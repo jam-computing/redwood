@@ -74,7 +74,7 @@ pub fn main() !u8 {
 
             const n = value.type.node;
 
-            _ = compiler.compile_node(&n, &output.imports.?, &output.frame_count) catch {
+            _ = compiler.compile_node(&n, &output.imports.?, &file_lines[1], &output.frame_count) catch {
                 continue;
             };
         }

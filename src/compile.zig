@@ -9,7 +9,7 @@ const iden_value_pair = struct {
     value: isize,
 };
 
-pub fn compile_node(_node: *const node, imports: *const std.StringHashMap(stdlib.imports), count: *const usize) !void {
+pub fn compile_node(_node: *const node, imports: *const std.StringHashMap(stdlib.imports), leds: *const [][]const u8, count: *const usize) !void {
     const alloc = std.heap.page_allocator;
 
     std.debug.print("Compiling node for {} frames\n", .{count.*});
@@ -24,13 +24,12 @@ pub fn compile_node(_node: *const node, imports: *const std.StringHashMap(stdlib
                 continue;
             };
         }
-        _ = compile_frame(_node, &iden_value.items);
-        // compile_frame(node, )
+        _ = compile_frame(_node, &iden_value.items, leds);
         // std.debug.print("{}\n", .{i});
     }
 }
 
-fn compile_frame(_: *const node, _: *[]iden_value_pair) ?[]const u8 {
+fn compile_frame(_: *const node, _: *[]iden_value_pair, _: *const [][]const u8) ?[]const u8 {
     std.debug.print("Compiling frame.\n", .{});
     return "";
 }
