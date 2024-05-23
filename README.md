@@ -27,3 +27,7 @@ let p: node{ plane }
 - With arguement flags?
 - Do it in repl?
 - Config file?
+
+### Running Program
+
+redwood source_file led_locations

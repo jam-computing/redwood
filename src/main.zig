@@ -15,7 +15,11 @@ pub fn main() !u8 {
     const alloc: std.mem.Allocator = std.heap.page_allocator;
     const names = try get_file_names(alloc) orelse unreachable;
 
-    const file_lines = get_file(names[0], alloc) catch {
+    if (names.len != 2) {
+        std.debug.print("Oopsies. Please provide the correct files\n", .{});
+    }
+
+    const file_lines = get_files(&names[0], &names[1], &alloc) catch {
         try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
         return 1;
     } orelse {
@@ -23,21 +27,11 @@ pub fn main() !u8 {
         return 1;
     };
 
-    if (names.len > 1) {
-        _ = get_file(names[1], alloc) catch {
-            try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
-            return 1;
-        } orelse {
-            try logger.Logger.log("Error reading file\n", logger.LogLevel.Error);
-            return 1;
-        };
-    }
-
     var token_lines = std.ArrayList([]const Token).init(alloc);
     defer token_lines.deinit();
 
     for (file_lines) |line| {
-        try token_lines.append(lexer.lex(line, alloc) catch {
+        try token_lines.append(lexer.lex(line[0], alloc) catch {
             std.debug.print("Could not lex\n", .{});
             return 1;
         });
@@ -54,7 +48,7 @@ pub fn main() !u8 {
 
     const output = parser.parse(try tokens.toOwnedSlice(), alloc);
 
-    err.report_compiletime_err(output, file_lines, token_lines, names[0], alloc);
+    err.report_compiletime_err(output, file_lines[0], token_lines, names[0], alloc);
 
     // debug info
     if (false) {
@@ -115,23 +109,46 @@ fn get_file_names(alloc: std.mem.Allocator) !?[][]const u8 {
     return try list.toOwnedSlice();
 }
 
-fn get_file(name: []const u8, alloc: std.mem.Allocator) !?[][]const u8 {
-    var file = std.fs.cwd().openFile(name, .{}) catch {
+fn get_files(source_name: *const []const u8, led_name: *const []const u8, alloc: *const std.mem.Allocator) !?[2][][]const u8 {
+    var source_file = std.fs.cwd().openFile(source_name.*, .{}) catch {
         return null;
     };
 
-    defer file.close();
+    var led_file = std.fs.cwd().openFile(led_name.*, .{}) catch {
+        return null;
+    };
 
-    var buff_reader = std.io.bufferedReader(file.reader());
-    const reader = buff_reader.reader();
+    defer source_file.close();
+    defer led_file.close();
 
-    var buf = std.ArrayList([]const u8).init(alloc);
-    defer buf.deinit();
-    while (try reader.readUntilDelimiterOrEofAlloc(alloc, '\n', 4096)) |line| {
+    var source_buf_reader = std.io.bufferedReader(source_file.reader());
+    const source_reader = source_buf_reader.reader();
+
+    var source_buf = std.ArrayList([]const u8).init(alloc.*);
+    defer source_buf.deinit();
+
+    while (try source_reader.readUntilDelimiterOrEofAlloc(alloc.*, '\n', 4096)) |line| {
         var wnline = try alloc.alloc(u8, line.len + 1);
         std.mem.copyForwards(u8, wnline[0..line.len], line);
         wnline[line.len] = '\n';
-        try buf.append(wnline);
+        try source_buf.append(wnline);
     }
-    return try buf.toOwnedSlice();
+
+    var led_buf_reader = std.io.bufferedReader(source_file.reader());
+    const led_reader = led_buf_reader.reader();
+
+    var led_buf = std.ArrayList([]const u8).init(alloc.*);
+    defer led_buf.deinit();
+
+    while (try led_reader.readUntilDelimiterOrEofAlloc(alloc.*, '\n', 4096)) |line| {
+        var wnline = try alloc.alloc(u8, line.len + 1);
+        std.mem.copyForwards(u8, wnline[0..line.len], line);
+        wnline[line.len] = '\n';
+        try source_buf.append(wnline);
+    }
+
+    return [2][][]const u8{
+        try source_buf.toOwnedSlice(),
+        try led_buf.toOwnedSlice(),
+    };
 }
