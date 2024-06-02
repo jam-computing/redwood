@@ -25,7 +25,6 @@ pub fn compile_node(_node: *const node, imports: *const std.StringHashMap(stdlib
             };
         }
         _ = compile_frame(_node, &iden_value.items, leds);
-        // std.debug.print("{}\n", .{i});
     }
 }
 

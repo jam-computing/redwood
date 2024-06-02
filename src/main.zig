@@ -13,10 +13,11 @@ const compiler = @import("compile.zig");
 
 pub fn main() !u8 {
     const alloc: std.mem.Allocator = std.heap.page_allocator;
-    const names = try get_file_names(alloc) orelse unreachable;
+    const names = try get_file_names(&alloc) orelse unreachable;
 
     if (names.len != 2) {
         std.debug.print("Oopsies. Please provide the correct files\n", .{});
+        return 1;
     }
 
     const file_lines = get_files(&names[0], &names[1], &alloc) catch {
@@ -30,8 +31,8 @@ pub fn main() !u8 {
     var token_lines = std.ArrayList([]const Token).init(alloc);
     defer token_lines.deinit();
 
-    for (file_lines) |line| {
-        try token_lines.append(lexer.lex(line[0], alloc) catch {
+    for (file_lines[0]) |line| {
+        try token_lines.append(lexer.lex(line, alloc) catch {
             std.debug.print("Could not lex\n", .{});
             return 1;
         });
@@ -83,11 +84,11 @@ pub fn main() !u8 {
     return 0;
 }
 
-fn get_file_names(alloc: std.mem.Allocator) !?[][]const u8 {
+fn get_file_names(alloc: *const std.mem.Allocator) !?[][]const u8 {
     var args = std.process.args();
 
     var i: u8 = 0;
-    var list = std.ArrayList([]const u8).init(alloc);
+    var list = std.ArrayList([]const u8).init(alloc.*);
     defer list.deinit();
     while (args.next()) |arg| {
         if (i == 1) {

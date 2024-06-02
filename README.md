@@ -19,6 +19,8 @@ import tick as t
 
 let p: node{ plane }
 
+p :: f(t): v3 = 0, t, 0
+
 @p f(t): v3 = t, t, t
 ```
 

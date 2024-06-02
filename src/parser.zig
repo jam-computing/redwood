@@ -143,14 +143,71 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
                 value_map.put(identifier_name, val) catch {
                     return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
                 };
-
-                // std.debug.print("Added fn, new count: {}\n", .{n.?.fns.count()});
             },
-            .identifier => {
+            .identifier => blk: {
                 const identifier_res = parse_identifier(&i, &tokens);
 
                 if (identifier_res.err) |e| {
                     return e;
+                }
+
+                i += 1;
+
+                if (tokens[i] == Token.colon) {
+                    const identifier_name = identifier_res.value.?;
+                    var n: ?node = null;
+
+                    // If the node accessing actually exists
+                    if (value_map.get(identifier_name)) |val| {
+                        if (val.type != stdlib._type.node) {
+                            return ParseResult.Err(ParseError.InvalidType, i);
+                        }
+                        n = val.type.node;
+                    } else {
+                        std.debug.print("Could not identify the node name\n", .{});
+                        return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
+                    }
+
+                    i += 1;
+                    const method_res = parse_method(&i, &tokens);
+
+                    if (method_res.err) |e| {
+                        std.debug.print("ERRRO \n", .{});
+                        return e;
+                    }
+
+                    const attr_res = parse_attr_decl(&i, &tokens);
+
+                    if (attr_res.err) |e| {
+                        return e;
+                    }
+
+                    var meth = method_res.value.?;
+
+                    if (attr_res.value) |v| {
+                        std.debug.print("Attribute value found: {}\n", .{v});
+                        meth.attr = v;
+                    }
+
+                    n.?.fns.?.put(meth.name, meth) catch {
+                        return ParseResult.Err(ParseError.FunctionCreationError, i);
+                    };
+
+                    var val = value_map.get(identifier_name) orelse {
+                        return ParseResult.Err(ParseError.InvalidIdentifier, i);
+                    };
+
+                    if (!value_map.remove(identifier_name)) {
+                        return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
+                    }
+
+                    val.type.node = n.?;
+
+                    value_map.put(identifier_name, val) catch {
+                        return ParseResult.Err(ParseError.InvalidNodeIdentifier, i);
+                    };
+
+                    break :blk;
                 }
 
                 const t = stdlib._type.infer(identifier_res.value.?) orelse {
@@ -165,6 +222,10 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
 
                 if (attr_res.err) |e| {
                     return e;
+                }
+
+                if (attr_res.value) |_| {} else {
+                    break :blk;
                 }
 
                 switch (attr_res.value.?) {
@@ -211,13 +272,20 @@ pub fn parse(tokens: []const Token, alloc: std.mem.Allocator) ParseResult {
 
 fn parse_attr_decl(i: *usize, tokens: *const []const Token) struct { value: ?attr, err: ?ParseResult } {
     i.* += 1;
+    std.debug.print("parsing atty: {}, {}\n", .{ i.*, tokens.*[i.*] });
 
     if (tokens.len - 1 == i.*) {
-        return .{ .err = null, .value = null };
+        return .{
+            .err = null,
+            .value = null,
+        };
     }
 
     if (tokens.*[i.*] != Token.bang) {
-        return .{ .err = null, .value = null };
+        return .{
+            .err = null,
+            .value = null,
+        };
     }
 
     i.* += 1;
@@ -336,10 +404,14 @@ fn parse_type_decl(i: *usize, tokens: *const []const Token) struct { value: ?std
 /// NOTE: This does not increment [i].
 /// You should call `i += 1` before calling this.
 fn parse_identifier(i: *usize, tokens: *const []const Token) struct { value: ?[]const u8, err: ?ParseResult } {
+    // std.debug.print("PARSING IDENTIFIER: {}", .{tokens.*[i.*]});
     if (tokens.*[i.*] != Token.identifier) {
         return .{ .err = ParseResult.Err(ParseError.ExpectedAttrIdentifier, i.*), .value = null };
     }
-    return .{ .err = null, .value = tokens.*[i.*].identifier };
+    return .{
+        .value = tokens.*[i.*].identifier,
+        .err = null,
+    };
 }
 
 fn should_ignore_name(name: []const u8) bool {
@@ -523,7 +595,10 @@ fn parse_expr(i: *usize, tokens: *const []const Token) struct { value: ?[]const 
 }
 
 fn parse_method(i: *usize, tokens: *const []const Token) struct { value: ?method, err: ?ParseResult } {
+    std.debug.print("Before parsing: {}\n", .{tokens.*[i.*]});
     i.* += 1;
+    std.debug.print("After parsing: {}\n", .{tokens.*[i.*]});
+
     const name_res = parse_identifier(i, tokens);
 
     if (name_res.err) |e| {
