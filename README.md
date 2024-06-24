@@ -24,6 +24,10 @@ p :: f(t): v3 = 0, t, 0
 @p f(t): v3 = t, t, t
 ```
 
+### No multiple arguements - USE CURRYING INSTEAD
+
+# No methods - Redesign
+
 ### Creating animations
 
 - With arguement flags?

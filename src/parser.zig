@@ -2,10 +2,12 @@ const std = @import("std");
 
 const stdlib = @import("stdlib.zig");
 
+const _type = @import("type.zig")._type;
+const _fn = @import("type.zig")._fn;
+
 const attr = @import("attribute.zig").attr;
 const node = @import("node.zig").node;
 const node_object = @import("node.zig").node_object;
-const method = @import("node.zig").method;
 const Token = @import("token.zig").Token;
 const ParseResult = @import("error.zig").ParseResult;
 const ParseError = @import("error.zig").ParseError;
@@ -337,7 +339,7 @@ fn parse_infer_type_decl(i: *usize, tokens: *const []const Token) struct { value
     }
 }
 
-fn parse_type_decl(i: *usize, tokens: *const []const Token) struct { value: ?stdlib._type, err: ?ParseResult } {
+fn parse_type_decl(i: *usize, tokens: *const []const Token) struct { value: ?_type, err: ?ParseResult } {
     const alloc = std.heap.page_allocator;
 
     i.* += 1;
@@ -365,7 +367,7 @@ fn parse_type_decl(i: *usize, tokens: *const []const Token) struct { value: ?std
 
     const type_name = iden_res.value.?;
 
-    var rw_type = stdlib._type.is_type(type_name) orelse {
+    var rw_type = _type.is_type(type_name) orelse {
         return .{
             .value = null,
             .err = ParseResult.Err(ParseError.InvalidType, i.*),
@@ -430,7 +432,7 @@ fn parse_type_node(i: *usize, tokens: *const []const Token, alloc: std.mem.Alloc
             .value = node{
                 .object = .none,
                 .colour = null,
-                .fns = std.StringHashMap(method).init(alloc),
+                .fns = std.StringHashMap(_fn).init(alloc),
             },
             .err = null,
         };
@@ -440,7 +442,7 @@ fn parse_type_node(i: *usize, tokens: *const []const Token, alloc: std.mem.Alloc
 
     if (tokens.*[i.*] == Token.rcurly) {
         return .{
-            .value = node{ .object = .none, .colour = null, .fns = std.StringHashMap(method).init(alloc) },
+            .value = node{ .object = .none, .colour = null, .fns = std.StringHashMap(_fn).init(alloc) },
             .err = null,
         };
     }
@@ -462,7 +464,7 @@ fn parse_type_node(i: *usize, tokens: *const []const Token, alloc: std.mem.Alloc
     const n = node{
         .object = node_obj,
         .colour = null,
-        .fns = std.StringHashMap(method).init(alloc),
+        .fns = std.StringHashMap(_fn).init(alloc),
     };
 
     i.* += 1;
@@ -500,7 +502,7 @@ fn parse_type_uint_assign(i: *usize, tokens: *const []const Token) struct { valu
 
     const num = tokens.*[i.*].expr;
 
-    const value = stdlib._type.infer(num) orelse {
+    const value = _type.infer(num) orelse {
         return .{
             .value = null,
             .err = ParseResult.Err(ParseError.NotTypeInference, i.*),
@@ -594,7 +596,7 @@ fn parse_expr(i: *usize, tokens: *const []const Token) struct { value: ?[]const 
     };
 }
 
-fn parse_method(i: *usize, tokens: *const []const Token) struct { value: ?method, err: ?ParseResult } {
+fn parse_method(i: *usize, tokens: *const []const Token) struct { value: ?_fn, err: ?ParseResult } {
     std.debug.print("Before parsing: {}\n", .{tokens.*[i.*]});
     i.* += 1;
     std.debug.print("After parsing: {}\n", .{tokens.*[i.*]});
@@ -630,11 +632,11 @@ fn parse_method(i: *usize, tokens: *const []const Token) struct { value: ?method
         };
     }
 
-    const m = method{
+    const m = _fn{
         .name = name_res.value.?,
-        .parameters = parameter_res.value.?,
+        .parameter = parameter_res.value.?,
         .return_type = type_res.value.?,
-        .math = expr_res.value.?,
+        .body = expr_res.value.?,
         .attr = null,
     };
 

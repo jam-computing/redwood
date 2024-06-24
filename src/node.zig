@@ -1,11 +1,12 @@
 const std = @import("std");
 const stdlib = @import("stdlib.zig");
 const attr = @import("attribute.zig").attr;
+const _fn = @import("type.zig");
 
 pub const node = struct {
     object: node_object,
     colour: ?[]const u8,
-    fns: ?std.StringHashMap(method),
+    fns: ?std.StringHashMap(_fn),
 
     pub fn empty() node {
         return node{
@@ -29,12 +30,4 @@ pub const node_object = enum {
         }
         return null;
     }
-};
-
-pub const method = struct {
-    name: []const u8,
-    parameters: [][]const u8,
-    return_type: stdlib._type,
-    math: []const u8,
-    attr: ?attr,
 };

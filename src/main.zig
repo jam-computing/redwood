@@ -4,6 +4,8 @@ const stdlib = @import("stdlib.zig");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 
+const _type = @import("type.zig")._type;
+
 const logger = @import("logger.zig");
 const err = @import("error.zig");
 
@@ -69,7 +71,7 @@ pub fn main() !u8 {
 
     if (output.values) |values| {
         for (values) |value| {
-            if (value.type != stdlib._type.node) {
+            if (value.type != _type.node) {
                 continue;
             }
 
